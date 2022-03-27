@@ -1,0 +1,10 @@
+{
+  "devToolsPort": 19003,
+  "expoServerPort": 19001,
+  "packagerPort": 19001,
+  "expoServerNgrokUrl": "https://i9-8av.anonymous.agritrack.exp.direct",
+  "packagerNgrokUrl": "https://packager.i9-8av.anonymous.agritrack.exp.direct",
+  "ngrokPid": 12500,
+  "packagerPid": null,
+  "webpackServerPort": null
+}
