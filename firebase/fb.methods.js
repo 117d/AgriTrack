@@ -2,6 +2,7 @@ import app from "../config/firebase.config";
 import firebase from "firebase/compat/app";
 import "firebase/compat/firestore";
 
+/* USER MANAGEMENT METHODS */
 export async function register(email, password, lastName, firstName) {
   try {
     await firebase
@@ -77,7 +78,7 @@ export async function editUser(userId, firstName, lastName) {
 }
 
 export async function addField(
-  userId,
+  //userId,
   fieldName,
   coordinates,
   perimeter,
@@ -92,35 +93,39 @@ export async function addField(
       area,
       cropType,
     };
+    const uid = firebase.auth.currentUser.uid;
     const dbRef = firebase
       .firestore()
       .collection("users")
-      .document(userId)
+      .document(uid)
       .collection("fields");
-    /*
+
     await dbRef.add(data).catch((error) => {
       alert(error);
-    });
-    */
-    await dbRef.update({
-      fields: firebase.firestore.FieldValue.arrayUnion(data),
     });
   } catch (error) {
     alert(error);
     console.log(error);
   }
 }
-export async function addTask(userId, taskName, taskType, taskProgress) {
+export async function addTask(
+  //userId,
+  taskName,
+  taskType,
+  taskProgress
+) {
   try {
     const data = {
       taskName,
       taskType,
       taskProgress,
+      dateCreated: firebase.firestore.FieldValue.serverTimestamp(),
     };
+    const uid = firebase.auth.currentUser.uid;
     const dbRef = firebase
       .firestore()
       .collection("users")
-      .document(userId)
+      .document(uid)
       .collection("tasks");
     await dbRef.add(data).catch((error) => {
       alert(error);
@@ -133,10 +138,10 @@ export async function addTask(userId, taskName, taskType, taskProgress) {
 /*TO BE IMPLEMENTED LATER */
 //also add deleteField and deleteTask
 export async function editField(
+  //userId,
   fieldId,
   fieldName,
   coordinates,
-  perimeter,
   area,
   cropType
 ) {
@@ -145,13 +150,17 @@ export async function editField(
       id: fieldId,
       fieldName,
       coordinates,
-      perimeter,
       area,
       cropType,
     };
-    const dbRef = firebase.firestore().collection("fields");
+    const uid = firebase.auth.currentUser.uid;
+    const dbRef = firebase
+      .firestore()
+      .collection("users")
+      .doc(uid)
+      .collection("fields");
     await dbRef
-      .doc(taskId)
+      .doc(fieldId)
       .update(data)
       .catch((error) => {
         alert(error);
@@ -179,7 +188,12 @@ export async function editTask(
       dateCreated,
       dateFinished,
     };
-    const dbRef = firebase.firestore().collection("tasks");
+    const uid = firebase.auth.currentUser.uid;
+    const dbRef = firebase
+      .firestore()
+      .collection("users")
+      .doc(uid)
+      .collection("tasks");
     await dbRef
       .doc(taskId)
       .update(data)
@@ -191,18 +205,62 @@ export async function editTask(
     console.log(error);
   }
 }
-
+/* GET FIELDS, GET TASKS */
 export async function getTasks() {
-  const dbRef = firebase.firestore().collection("tasks");
+  const uid = firebase.auth.currentUser.uid;
+  const dbRef = firebase
+    .firestore()
+    .collection("users")
+    .doc(uid)
+    .collection("tasks");
   const snapshot = await dbRef.get();
   snapshot.forEach((doc) => {
     console.log(doc.id, "=>", doc.data());
   });
 }
 export async function getFields() {
-  const dbRef = firebase.firestore().collection("fields");
+  const uid = firebase.auth.currentUser.uid;
+  const dbRef = firebase
+    .firestore()
+    .collection("users")
+    .doc(uid)
+    .collection("fields");
   const snapshot = await dbRef.get();
   snapshot.forEach((doc) => {
     console.log(doc.id, "=>", doc.data());
   });
+}
+/* DELETE FIELDS, DELETE TASKS */
+export async function deleteTask(taskId) {
+  const uid = firebase.auth.currentUser.uid;
+  const dbRef = firebase
+    .firestore()
+    .collection("users")
+    .doc(uid)
+    .collection("tasks");
+  dbRef
+    .doc(taskId)
+    .delete.then(() => {
+      console.log("Document successfully deleted!");
+    })
+    .catch((error) => {
+      console.error("Error removing document: ", error);
+    });
+}
+
+export async function deleteField(fieldId) {
+  const uid = firebase.auth.currentUser.uid;
+  const dbRef = firebase
+    .firestore()
+    .collection("users")
+    .doc(uid)
+    .collection("fields");
+  dbRef
+    .doc(fieldId)
+    .delete.then(() => {
+      console.log("Document successfully deleted!");
+    })
+    .catch((error) => {
+      console.error("Error removing document: ", error);
+    });
 }
