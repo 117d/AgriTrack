@@ -3,13 +3,13 @@ import { Button, Text, View, StyleSheet } from "react-native";
 import { TouchableOpacity } from "react-native-gesture-handler";
 import { Picker } from "@react-native-picker/picker";
 import { useState } from "react";
-import { useNavigation } from "@react-navigation/native";
+//import { useNavigation } from "@react-navigation/native";
 
-function Tracking() {
-  const navigation = useNavigation();
+function Tracking({ navigation }) {
+  //const navigation = useNavigation();
 
-  const [selectedTask, setSelectedTask] = useState();
-  const [selectedField, setSelectedField] = useState();
+  const [task, setTask] = useState();
+  const [field, setField] = useState();
 
   return (
     <View style={styles.container}>
@@ -18,8 +18,8 @@ function Tracking() {
       <Picker
         style={styles.pickerStyle}
         mode="dropdown"
-        selectedValue={selectedTask}
-        onValueChange={(itemValue, itemIndex) => setSelectedTask(itemValue)}
+        selectedValue={task}
+        onValueChange={(itemValue, itemIndex) => setTask(itemValue)}
         prompt="Choose Task..."
       >
         <Picker.Item label="Tilling" value="tilling" />
@@ -30,8 +30,8 @@ function Tracking() {
       <Picker
         style={styles.pickerStyle}
         mode="dropdown"
-        selectedValue={selectedField}
-        onValueChange={(itemValue, itemIndex) => setSelectedField(itemValue)}
+        selectedValue={field}
+        onValueChange={(itemValue, itemIndex) => setField(itemValue)}
         prompt="Choose Field..."
       >
         <Picker.Item label="Field1" value="id1" />
@@ -47,7 +47,7 @@ function Tracking() {
       </TouchableOpacity>
       <TouchableOpacity
         style={styles.backButton}
-        onPress={() => navigation.navigate("Home")}
+        onPress={() => navigation.navigate("Dashboard")}
       >
         <Text style={styles.text}>BACK</Text>
       </TouchableOpacity>

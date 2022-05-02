@@ -22,12 +22,29 @@ export default function App() {
         <Text style={styles.welcomeText}>WELCOME TO THE AgriTrack!</Text>
       </View>
 
+      {/* TODO: CHANGE LATER
+      //
       <TouchableOpacity style={styles.loginBtn}>
         <Text style={styles.loginText}>LOGIN</Text>
       </TouchableOpacity>
       <TouchableOpacity style={styles.loginBtn}>
         <Text style={styles.loginText}>START TRACKING</Text>
       </TouchableOpacity>
+       */}
+      <View style={styles.welcomeContainer}>
+        <TouchableOpacity
+          style={styles.loginBtn}
+          onPress={() => navigation.navigate("Registration")}
+        >
+          <Text style={styles.loginText}>REGISTER</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={styles.btn}
+          onPress={() => navigation.navigate("Login")}
+        >
+          <Text style={styles.loginText}>LOGIN</Text>
+        </TouchableOpacity>
+      </View>
     </View>
   );
 }
@@ -46,7 +63,7 @@ const styles = StyleSheet.create({
     marginBottom: 40,
     marginTop: 20,
   },
-  loginBtn: {
+  btn: {
     width: "80%",
     borderRadius: 25,
     height: 50,
