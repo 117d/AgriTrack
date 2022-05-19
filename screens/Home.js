@@ -38,9 +38,9 @@ export default function Home({ navigation }) {
       </TouchableOpacity>
       <TouchableOpacity
         style={styles.btn}
-        onPress={() => navigation.navigate("AddNewItem")}
+        onPress={() => navigation.navigate("AddNewField")}
       >
-        <Text style={styles.text}>AddNewItem</Text>
+        <Text style={styles.text}>Add new Field</Text>
       </TouchableOpacity>
     </View>
   );

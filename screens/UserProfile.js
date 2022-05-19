@@ -47,6 +47,8 @@ export default function UserProfile({ navigation }) {
       <View style={styles.pageTitle}>
         <Text style={styles.textTitle}>Dashboard</Text>
       </View>
+      <View style={"alignItems: center"}></View>
+
       <View style={styles.container}></View>
     </View>
   );

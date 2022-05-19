@@ -10,25 +10,34 @@ import {
   Modal,
 } from "react-native";
 import { Picker } from "@react-native-picker/picker";
-
-import { logOut } from "../firebase/fb.methods";
+import { getFields, getTasks, logOut } from "../firebase/fb.methods";
 import firebase from "firebase/compat/app";
 const { width, height } = Dimensions.get("window");
+
 export default function Dashboard({ navigation }) {
   let currUserId = firebase.auth().currentUser.uid;
   const [firstName, setFirstName] = useState("");
   const [modalVisible, setModalVisible] = useState(false);
-  const [task, setTask] = useState();
-  const [field, setField] = useState();
+  const [task, setTask] = useState(null);
+  const [userTasks, setUserTasks] = useState([]);
+  const [field, setField] = useState(null);
+  const [userFields, setUserFields] = useState([]);
+  const [avatar, setAvatar] = useState(null);
   // handle the tracking start
   const saveField = () => {
     console.log("Started");
     setModalVisible(!modalVisible);
-    navigation.navigate("Maps");
+    navigation.navigate("Maps", { task: task, field: field });
   };
   const cancelSave = () => {
     console.log("Cancelled");
     setModalVisible(!modalVisible);
+  };
+  const handleTaskChange = () => {
+    navigation.navigate("AddNewItem");
+  };
+  const handleFieldChange = () => {
+    navigation.navigate("AddNewField");
   };
   useEffect(() => {
     async function getUserInfo() {
@@ -41,9 +50,22 @@ export default function Dashboard({ navigation }) {
       if (!doc.exists) {
         //alert("Not found!");
         setFirstName("Admin");
+        //navigation.navigate("Home");
       } else {
         let dataObj = doc.data();
+        const tasksFromDb = await getTasks();
+        const fieldsFromDb = await getFields();
+        //console.log("user tasks: " + JSON.stringify(tasksFromDb));
+        //console.log("user fields: " + JSON.stringify(fieldsFromDb));
+        setUserTasks(...userTasks, tasksFromDb);
+        setUserFields(...userFields, fieldsFromDb);
+        console.log("user tasks: " + userTasks);
+        userTasks.map((task) =>
+          console.log("Task id: " + task.id + " and name: " + task.taskName)
+        );
         setFirstName(dataObj.firstName);
+        setAvatar(dataObj.profPicUrl);
+        // console.log(await getTasks());
       }
     }
     getUserInfo();
@@ -70,31 +92,43 @@ export default function Dashboard({ navigation }) {
           <View style={styles.modalView}>
             <Text style={styles.modalTitle}>Choose parameters</Text>
             <View style={styles.pickForm}>
-              <Picker
-                style={styles.pickerStyle}
-                mode="dropdown"
-                selectedValue={task}
-                onValueChange={(itemValue, itemIndex) => setTask(itemValue)}
-                prompt="Choose Task..."
-              >
-                <Picker.Item label="Tilling" value="tilling" />
-                <Picker.Item label="Fertilizing" value="fertilizing" />
-                <Picker.Item label="Other" value="new" />
-              </Picker>
-
+              {userTasks && userTasks.length > 0 ? (
+                <Picker
+                  style={styles.pickerStyle}
+                  mode="dropdown"
+                  selectedValue={task}
+                  prompt="Choose Task..."
+                  onValueChange={(itemValue, itemIndex) => setTask(itemValue)}
+                >
+                  {userTasks.map((task) => (
+                    <Picker.Item
+                      label={task.taskName}
+                      value={task.id}
+                      key={task.id}
+                    />
+                  ))}
+                </Picker>
+              ) : null}
               <Picker
                 style={styles.pickerStyle}
                 mode="dropdown"
                 selectedValue={field}
-                onValueChange={(itemValue, itemIndex) => setField(itemValue)}
+                onValueChange={(itemValue, itemIndex) =>
+                  handleFieldChange(itemValue, itemIndex)
+                }
                 prompt="Choose Field..."
               >
-                <Picker.Item label="Demo" value="id1" />
-                <Picker.Item
-                  label="Add new..."
-                  value="new_field"
-                  //onPress={navigation.navigate("AddNewItem")}
-                />
+                {userFields && userFields.length > 0 ? (
+                  userFields.map((field) => (
+                    <Picker.Item
+                      label={field.fieldName}
+                      value={field.id}
+                      key={field.id}
+                    />
+                  ))
+                ) : (
+                  <Picker.Item label="Add New" value="new" key={"new"} />
+                )}
               </Picker>
             </View>
             <View style={styles.button}>
@@ -110,10 +144,14 @@ export default function Dashboard({ navigation }) {
       </Modal>
       <View style={styles.profileTop}>
         <View style={styles.imageContainer}>
-          <Image
-            style={styles.image}
-            source={require("../assets/temp_logo.png")}
-          />
+          {avatar != null ? (
+            <Image style={styles.image} source={{ uri: avatar }} />
+          ) : (
+            <Image
+              style={styles.image}
+              source={require("../assets/default_user.png")}
+            />
+          )}
         </View>
         <Text style={styles.text}>Hello, {firstName}</Text>
       </View>
@@ -144,10 +182,10 @@ export default function Dashboard({ navigation }) {
         >
           <Text style={styles.buttonText}>Add Field</Text>
         </TouchableOpacity>
+        <Text style={styles.logoutText} onPress={onLogOut}>
+          Log Out
+        </Text>
       </View>
-      <Text style={styles.logoutText} onPress={onLogOut}>
-        Log Out
-      </Text>
     </View>
   );
 }
@@ -162,7 +200,7 @@ const styles = StyleSheet.create({
   },
   profileTop: {
     //backgroundColor: "#B8D1A9",
-    backgroundColor: "blue",
+    backgroundColor: "#8dc27e",
     width: width,
     height: "40%",
     justifyContent: "center",
@@ -192,10 +230,12 @@ const styles = StyleSheet.create({
     marginTop: 80,
   },
   image: {
-    width: "70%",
+    //flex: 1,
+    width: undefined,
     aspectRatio: 1,
-    marginBottom: 40,
-    marginTop: 20,
+    height: "100%",
+    //paddingBottom: 10,
+    //marginTop: 20,
   },
   textTitle: {
     fontSize: 30,
@@ -229,6 +269,7 @@ const styles = StyleSheet.create({
   logoutText: {
     fontWeight: "bold",
     fontSize: 18,
+    color: "black",
     //fontFamily: "Inter-Black",
   },
   text: {

@@ -12,25 +12,64 @@ import {
 } from "react-native";
 import { Picker } from "@react-native-picker/picker";
 import { StatusBar } from "expo-status-bar";
-import MapView from "react-native-maps";
+import MapView, { Marker } from "react-native-maps";
 import * as Location from "expo-location";
 import * as geolib from "geolib";
-//import * as Permissions from "expo-permissions";
+import { addField } from "../firebase/fb.methods";
+
+const dummyCoords = [
+  { latitude: 52.23982496430413, longitude: 20.996974892914295 },
+  { latitude: 52.23964963014553, longitude: 20.996877998113632 },
+  { latitude: 52.23963115226643, longitude: 20.99720422178507 },
+];
 
 const { width, height } = Dimensions.get("window");
+const crops = [
+  "Wheat",
+  "Rice",
+  "Corn",
+  "Legumes",
+  "Potatoes",
+  "Tomatoes",
+  "Barley",
+  "Beets",
+  "Grass",
+  "Hemp",
+  "Cotton",
+  "Flax",
+  "Sunflower",
+  "Other",
+];
 export default function AddNewField({ navigation }) {
-  const [location, setLocation] = useState(null);
-  const [plgnCoordinates, setPlngCoordinates] = useState([]);
+  const [fieldName, setFieldName] = useState("");
+  const [cropType, setCropType] = useState("");
+  const [currLocation, setCurrLocation] = useState({
+    latitude: null,
+    longitude: null,
+  });
+  const [plgnCoords, setPlgnCoords] = useState([]);
   const [modalVisible, setModalVisible] = useState(false);
-  const [plgnArea, setPlgnArea] = useState("");
+  const [plgnArea, setPlgnArea] = useState(null);
+  const [mapClicked, setMapClicked] = useState(false);
+  const [markers, setMarker] = useState([]);
   // handle the field saving
   const saveField = () => {
+    addField(fieldName, plgnCoords, plgnArea, cropType);
     console.log("Saved");
     setModalVisible(!modalVisible);
     navigation.navigate("Dashboard");
   };
   const cancelSave = () => {
     console.log("Cancelled");
+    setModalVisible(!modalVisible);
+  };
+  const clearFields = () => {
+    setPlgnCoords([]);
+    setMarker([]);
+    setFieldName("");
+    setPlgnArea("");
+    setCropType("");
+    console.log("Cleared");
     setModalVisible(!modalVisible);
   };
   //Get user's location
@@ -43,78 +82,33 @@ export default function AddNewField({ navigation }) {
       }
 
       let location = await Location.getCurrentPositionAsync({});
-      setLocation(location);
+      setCurrLocation({
+        latitude: location.coords.latitude,
+        longitude: location.coords.longitude,
+      });
     })();
   }, []);
-  /*
-    <MapView.Polygon
-          //key={polygon.id}
-          coordinates={[
-            { latitude: 37.8025259, longitude: -122.4351431 },
-            { latitude: 37.7896386, longitude: -122.421646 },
-            { latitude: 37.7665248, longitude: -122.4161628 },
-            { latitude: 37.7734153, longitude: -122.4577787 },
-            { latitude: 37.7948605, longitude: -122.4596065 },
-            { latitude: 37.8025259, longitude: -122.4351431 },
-          ]}
-          fillColor="red"
-          strokeColor="red"
-        />
-        */
 
-  //onPress={ e => console.log(e.nativeEvent.coordinate) }
-  /*Object {
-  "latitude": 52.23994814948134,
-  "longitude": 20.996913202106956,
-}*/
-  //let plgnCoordinates = [];
   const pressedSave = () => {
     setModalVisible(true);
-    const areaInM2 = geolib.getAreaOfPolygon(dummyCoords);
+    const areaInM2 = geolib.getAreaOfPolygon(plgnCoords);
     setPlgnArea((areaInM2 / 1000).toFixed(3));
   };
-  const getPolygonCoordinates = (e) => {
-    const newCoord = {
-      latitude: parseFloat(e.nativeEvent.coordinate.latitude),
-      longitude: parseFloat(e.nativeEvent.coordinate.longitude),
-    };
-    //console.log("new" + newCoord.longitude);
-    //plgnCoordinates.push(newCoord);
-    /*
-    prevCoordinates = plgnCoordinates;
-    setPlngCoordinates((prevCoordinates) => [...prevCoordinates, newCoord]);
-    plgnCoordinates.map((plgnCoordinate) =>
-      console.log(
-        "lat: " + plgnCoordinate.latitude + " Long: " + plgnCoordinate.longitude
-      )
-    );*/
-    console.log("lat: " + newCoord.latitude + " Long: " + newCoord.longitude);
-    //e.nativeEvent.coordinate
+
+  const onMapClick = (e) => {
+    setMapClicked(true);
+    setMarker([...markers, { latlng: e.nativeEvent.coordinate }]);
+    setPlgnCoords([
+      ...plgnCoords,
+      {
+        latitude: e.nativeEvent.coordinate.latitude,
+        longitude: e.nativeEvent.coordinate.longitude,
+      },
+    ]);
   };
-  /*
-  useEffect(()=> {
-    getPolygonCoordinates();
-  }, [plgnCoordinates])
-  */
-  //calculateZoomLevel
-  /*
-  <MapView.Polygon
-          //key={polygon.id}
-          //coordinates={plgnCoordinates}
-          coordinates={[
-            { latitude: 52.23982496430413, longitude: 20.996974892914295 },
-            { latitude: 52.23964963014553, longitude: 20.996877998113632 },
-            { latitude: 52.23963115226643, longitude: 20.99720422178507 }
-          ]}
-          fillColor="red"
-          strokeColor="red"
-        />*/
-  //const [zoom, setZoom] = useState(15);
-  const dummyCoords = [
-    { latitude: 52.23982496430413, longitude: 20.996974892914295 },
-    { latitude: 52.23964963014553, longitude: 20.996877998113632 },
-    { latitude: 52.23963115226643, longitude: 20.99720422178507 },
-  ];
+  //check for polygon array
+  console.log("array of plgn coords: " + JSON.stringify(plgnCoords));
+
   return (
     <View style={styles.container}>
       <Modal
@@ -129,7 +123,27 @@ export default function AddNewField({ navigation }) {
         <View style={styles.modal}>
           <View style={styles.modalView}>
             <Text style={styles.text}>Enter Field Name</Text>
-            <TextInput style={styles.input} placeholder="Name" />
+            <TextInput
+              style={styles.input}
+              placeholder="Name"
+              value={fieldName}
+              onChangeText={(name) => setFieldName(name)}
+            />
+            <Picker
+              style={{
+                color: "white",
+                borderBottomColor: "white",
+                borderWidth: 2,
+              }}
+              mode="dropdown"
+              selectedValue={cropType}
+              prompt="Choose Type..."
+              onValueChange={(itemValue, itemIndex) => setCropType(itemValue)}
+            >
+              {crops.map((crop, index) => (
+                <Picker.Item label={crop} value={crop} key={index} />
+              ))}
+            </Picker>
             <Text style={styles.text}>Area: {plgnArea} ha</Text>
             <View style={styles.button}>
               <TouchableOpacity style={styles.inputBtn} onPress={saveField}>
@@ -138,37 +152,56 @@ export default function AddNewField({ navigation }) {
               <TouchableOpacity style={styles.inputBtn} onPress={cancelSave}>
                 <Text style={styles.inputBtnTxt}>Cancel</Text>
               </TouchableOpacity>
+              <TouchableOpacity style={styles.inputBtn} onPress={clearFields}>
+                <Text style={styles.inputBtnTxt}>Clear</Text>
+              </TouchableOpacity>
             </View>
           </View>
         </View>
       </Modal>
-      <MapView
-        style={styles.map}
-        mapType="hybrid"
-        showsUserLocation={true}
-        showsMyLocationButton={true}
-        initialRegion={location}
-        //maxZoomLevel={5}
-        //minZoomLevel={40}
-        followsUserLocation={true}
-        //onPress={(e) => console.log(e.nativeEvent.coordinate)}
-        onPress={(e) => getPolygonCoordinates(e)}
-      >
-        <MapView.Polygon
-          //key={polygon.id}
-          //coordinates={plgnCoordinates}
-          coordinates={dummyCoords}
-          fillColor="rgba(255, 0, 0, 0.5)"
-          strokeColor="red"
-          /*onPress={setPlgnArea(geolib.getAreaOfPolygon(dummyCoords))}*/
-        />
-      </MapView>
-      <TouchableOpacity style={styles.addButton} onPress={pressedSave}>
-        <Image
-          style={styles.image}
-          source={require("../assets/save_icon.png")}
-        />
-      </TouchableOpacity>
+      {currLocation.latitude != null ? (
+        <MapView
+          style={styles.map}
+          mapType="hybrid"
+          showsUserLocation={true}
+          showsMyLocationButton={true}
+          initialRegion={{
+            latitude: currLocation.latitude,
+            longitude: currLocation.longitude,
+            latitudeDelta: 0.0022,
+            longitudeDelta: 0.0021,
+          }}
+          followsUserLocation={true}
+          //onPress={(e) => console.log(e.nativeEvent.coordinate)}
+          onPress={(e) => onMapClick(e)}
+        >
+          {markers.map((marker, i) => (
+            <MapView.Marker coordinate={marker.latlng} key={i} />
+          ))}
+          {markers.length > 1 ? (
+            <MapView.Polyline
+              coordinates={plgnCoords}
+              strokeColor={"black"}
+              strokeWidth={3}
+            />
+          ) : null}
+          {markers.length >= 3 ? (
+            <MapView.Polygon
+              coordinates={plgnCoords}
+              fillColor="rgba(255, 0, 0, 0.5)"
+              strokeColor="red"
+            />
+          ) : null}
+        </MapView>
+      ) : null}
+      {mapClicked ? (
+        <TouchableOpacity style={styles.addButton} onPress={pressedSave}>
+          <Image
+            style={styles.image}
+            source={require("../assets/save_icon.png")}
+          />
+        </TouchableOpacity>
+      ) : null}
     </View>
   );
 }
@@ -283,18 +316,18 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   modal: {
-    width: "70%",
-    height: "20%",
+    width: "80%",
+    height: "30%",
     alignItems: "center",
     justifyContent: "center",
     position: "absolute",
     top: height / 2.5,
-    left: width / 6.3,
+    left: width / 9,
     backgroundColor: "rgba(0,0,0,0.7)",
     paddingTop: 10,
   },
   inputBtn: {
-    width: "40%",
+    width: "30%",
     height: 50,
     padding: 10,
     borderWidth: 1,
@@ -313,3 +346,17 @@ const styles = StyleSheet.create({
     color: "black",
   },
 });
+
+//polyline
+/*
+{markers.length > 0
+            ? markers.map((marker, i) => (
+                <MapView.Polyline
+                  coordinates={marker.latlng}
+                  key={i}
+                  strokeColor="black"
+                  strokeWidth={3}
+                />
+              ))
+            : null}
+            */

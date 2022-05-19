@@ -1,9 +1,49 @@
 import app from "../config/firebase.config";
+//import * as firebase from "firebase";
 import firebase from "firebase/compat/app";
 import "firebase/compat/firestore";
-
+import "firebase/compat/storage";
+import { v4 as uuidv4 } from "uuid";
+import "react-native-get-random-values";
 /* USER MANAGEMENT METHODS */
-export async function register(email, password, lastName, firstName) {
+export const uploadImage = async (pickedImage) => {
+  const blob = await new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    xhr.onload = function () {
+      resolve(xhr.response);
+    };
+    xhr.onerror = function () {
+      reject(new TypeError("Network request failed"));
+    };
+    xhr.responseType = "blob";
+    xhr.open("GET", pickedImage.uri, true);
+    xhr.send(null);
+  });
+  try {
+    // Create a ref in Firebase
+    const ref = firebase.storage().ref().child(`avatars/${uuidv4()}`);
+
+    // Upload blob to Firebase
+    const snapshot = await ref.put(blob, { contentType: "image/png" });
+
+    // Create a download URL
+    const remoteURL = await snapshot.ref.getDownloadURL();
+    console.log("REMOTE_URL" + remoteURL);
+    // Return the URL
+    return remoteURL;
+  } catch (error) {
+    alert(error);
+  } finally {
+    blob.close();
+  }
+};
+export async function register(
+  email,
+  password,
+  lastName,
+  firstName,
+  profPicUrl
+) {
   try {
     await firebase
       .auth()
@@ -15,8 +55,7 @@ export async function register(email, password, lastName, firstName) {
           email,
           lastName,
           firstName,
-          fields: [],
-          tasks: [],
+          profPicUrl,
         };
         const dbRef = firebase.firestore().collection("users");
         dbRef
@@ -27,7 +66,7 @@ export async function register(email, password, lastName, firstName) {
           });
       });
 
-    const currentUser = firebase.auth().currentUser;
+    const user = firebase.auth().currentUser;
 
     /*
     const db = firebase.firestore();
@@ -58,12 +97,13 @@ export async function logOut() {
   }
 }
 
-export async function editUser(userId, firstName, lastName) {
+export async function editUser(userId, firstName, lastName, profPicUrl) {
   try {
     const data = {
       id: userId,
-      firstName,
-      lastName,
+      firstName: firstName,
+      lastName: lastName,
+      profPicUrl: profPicUrl,
     };
     const dbRef = firebase.firestore().collection("users");
     await dbRef
@@ -77,32 +117,30 @@ export async function editUser(userId, firstName, lastName) {
   }
 }
 
-export async function addField(
-  //userId,
-  fieldName,
-  coordinates,
-  perimeter,
-  area,
-  cropType
-) {
+export async function addField(fieldName, coordinates, area, cropType) {
   try {
     const data = {
-      fieldName,
-      coordinates,
-      perimeter,
-      area,
-      cropType,
+      fieldName: fieldName,
+      coordinates: coordinates,
+      area: area,
+      cropType: cropType,
     };
-    const uid = firebase.auth.currentUser.uid;
-    const dbRef = firebase
-      .firestore()
-      .collection("users")
-      .document(uid)
-      .collection("fields");
+    const uid = firebase.auth().currentUser.uid;
+    console.log("uid:" + uid);
+    const db = firebase.firestore();
+    const dbRef = db.collection("users").doc(uid).collection("fields").doc();
 
-    await dbRef.add(data).catch((error) => {
-      alert(error);
-    });
+    await dbRef
+      .set(data)
+      .then(() => {
+        console.log("Document successfully written!");
+      })
+      .catch((error) => {
+        const errorCode = error.code;
+        const errorMessage = error.message;
+
+        alert(errorCode + errorMessage);
+      });
   } catch (error) {
     alert(error);
     console.log(error);
@@ -112,31 +150,34 @@ export async function addTask(
   //userId,
   taskName,
   taskType,
-  taskProgress
+  taskStatus
 ) {
   try {
     const data = {
-      taskName,
-      taskType,
-      taskProgress,
+      taskName: taskName,
+      taskType: taskType,
+      taskStatus: taskStatus,
       dateCreated: firebase.firestore.FieldValue.serverTimestamp(),
+      taskDuration: "",
     };
-    const uid = firebase.auth.currentUser.uid;
-    const dbRef = firebase
-      .firestore()
-      .collection("users")
-      .document(uid)
-      .collection("tasks");
-    await dbRef.add(data).catch((error) => {
-      alert(error);
-    });
+    const uid = firebase.auth().currentUser.uid;
+    console.log("uid:" + uid);
+    const db = firebase.firestore();
+    const dbRef = db.collection("users").doc(uid).collection("tasks").doc();
+    dbRef
+      .set(data)
+      .then(() => {
+        console.log("Document successfully written!");
+      })
+      .catch((error) => {
+        alert(error);
+      });
   } catch (error) {
     alert(error);
     console.log(error);
   }
 }
-/*TO BE IMPLEMENTED LATER */
-//also add deleteField and deleteTask
+
 export async function editField(
   //userId,
   fieldId,
@@ -148,12 +189,12 @@ export async function editField(
   try {
     const data = {
       id: fieldId,
-      fieldName,
-      coordinates,
-      area,
-      cropType,
+      fieldName: fieldName,
+      coordinates: coordinates,
+      area: area,
+      cropType: cropType,
     };
-    const uid = firebase.auth.currentUser.uid;
+    const uid = firebase.auth().currentUser.uid;
     const dbRef = firebase
       .firestore()
       .collection("users")
@@ -170,11 +211,11 @@ export async function editField(
     console.log(error);
   }
 }
-/*TO BE IMPLEMENTED LATER */
 export async function editTask(
   taskId,
   taskName,
   taskType,
+  taskStatus,
   taskProgress,
   dateCreated,
   dateFinished
@@ -184,11 +225,12 @@ export async function editTask(
       id: taskId,
       taskName,
       taskType,
+      taskStatus,
       taskProgress,
       dateCreated,
       dateFinished,
     };
-    const uid = firebase.auth.currentUser.uid;
+    const uid = firebase.auth().currentUser.uid;
     const dbRef = firebase
       .firestore()
       .collection("users")
@@ -207,7 +249,8 @@ export async function editTask(
 }
 /* GET FIELDS, GET TASKS */
 export async function getTasks() {
-  const uid = firebase.auth.currentUser.uid;
+  const tasks = [];
+  const uid = firebase.auth().currentUser.uid;
   const dbRef = firebase
     .firestore()
     .collection("users")
@@ -215,11 +258,14 @@ export async function getTasks() {
     .collection("tasks");
   const snapshot = await dbRef.get();
   snapshot.forEach((doc) => {
-    console.log(doc.id, "=>", doc.data());
+    tasks.push({ id: doc.id, ...doc.data() });
+    //console.log(doc.id, "=>", doc.data());
   });
+  return tasks;
 }
 export async function getFields() {
-  const uid = firebase.auth.currentUser.uid;
+  const fields = [];
+  const uid = firebase.auth().currentUser.uid;
   const dbRef = firebase
     .firestore()
     .collection("users")
@@ -227,12 +273,14 @@ export async function getFields() {
     .collection("fields");
   const snapshot = await dbRef.get();
   snapshot.forEach((doc) => {
-    console.log(doc.id, "=>", doc.data());
+    fields.push({ id: doc.id, ...doc.data() });
+    //console.log(doc.id, "=>", doc.data());
   });
+  return fields;
 }
 /* DELETE FIELDS, DELETE TASKS */
 export async function deleteTask(taskId) {
-  const uid = firebase.auth.currentUser.uid;
+  const uid = firebase.auth().currentUser.uid;
   const dbRef = firebase
     .firestore()
     .collection("users")
@@ -249,7 +297,7 @@ export async function deleteTask(taskId) {
 }
 
 export async function deleteField(fieldId) {
-  const uid = firebase.auth.currentUser.uid;
+  const uid = firebase.auth().currentUser.uid;
   const dbRef = firebase
     .firestore()
     .collection("users")
@@ -263,4 +311,15 @@ export async function deleteField(fieldId) {
     .catch((error) => {
       console.error("Error removing document: ", error);
     });
+}
+
+export async function getTask(taskId) {
+  const uid = firebase.auth().currentUser.uid;
+  const dbRef = firebase
+    .firestore()
+    .collection("users")
+    .doc(uid)
+    .collection("tasks")
+    .doc(taskId);
+  //dbRef.get().then((return doc.d))
 }

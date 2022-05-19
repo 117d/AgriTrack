@@ -8,17 +8,21 @@ import {
   ScrollView,
   TextInput,
 } from "react-native";
+import * as ImagePicker from "expo-image-picker";
 
-import { register } from "../firebase/fb.methods";
-
+import { register, uploadImage } from "../firebase/fb.methods";
+//** ADD PROFILE PICTURE UPLOAD */
 export default function Registration({ navigation }) {
+  const [avatar, setAvatar] = useState(null);
   const [email, setEmail] = useState("");
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
-
+  const [pickedImage, setPickedImage] = useState(null);
   const emptyState = () => {
+    setPickedImage(null);
+    setAvatar(null);
     setEmail("");
     setFirstName("");
     setLastName("");
@@ -26,7 +30,7 @@ export default function Registration({ navigation }) {
     setConfirmPassword("");
   };
 
-  const onRegister = () => {
+  const onRegister = async () => {
     if (!firstName) {
       alert("Required");
     } else if (!email) {
@@ -39,9 +43,22 @@ export default function Registration({ navigation }) {
     } else if (password !== confirmPassword) {
       alert("Password does not match!");
     } else {
-      register(email, password, lastName, firstName);
+      //setAvatar(uploadImage(pickedImage));
+      setAvatar(await uploadImage(pickedImage));
+      //setAvatar(pickedImage);
+      register(email, password, lastName, firstName, avatar);
       navigation.navigate("Loading");
       emptyState();
+    }
+  };
+
+  const onChooseImage = async () => {
+    const pickerResult = await ImagePicker.launchImageLibraryAsync({
+      allowsEditing: true,
+      aspect: [1, 1],
+    });
+    if (!pickerResult.cancelled) {
+      setPickedImage(pickerResult);
     }
   };
 
@@ -95,6 +112,13 @@ export default function Registration({ navigation }) {
           autoCapitalize="none"
           secureTextEntry={true}
         />
+        <TouchableOpacity style={styles.inputBtn} onPress={onChooseImage}>
+          {avatar == null ? (
+            <Text style={styles.text}>Choose image...</Text>
+          ) : (
+            <Text style={styles.text}>Change...</Text>
+          )}
+        </TouchableOpacity>
       </View>
       <TouchableOpacity style={styles.inputBtn} onPress={onRegister}>
         <Text style={styles.text}>Sign Up</Text>
@@ -137,6 +161,7 @@ const styles = StyleSheet.create({
   inputContainer: {
     marginBottom: 2,
     width: "80%",
+    alignItems: "center",
   },
   input: {
     width: "100%",
