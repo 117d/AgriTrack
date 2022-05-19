@@ -3,18 +3,14 @@ import { Button, Text, View, StyleSheet } from "react-native";
 import { TouchableOpacity } from "react-native-gesture-handler";
 import { Picker } from "@react-native-picker/picker";
 import { useState } from "react";
-//import { useNavigation } from "@react-navigation/native";
 
-function Tracking({ navigation }) {
-  //const navigation = useNavigation();
-
-  const [task, setTask] = useState();
+function Tracking({ navigation, tasks, fields }) {
+  const [task, setTask] = useState([]);
   const [field, setField] = useState();
 
   return (
     <View style={styles.container}>
       <Text style={styles.titleText}>Choose parameters</Text>
-
       <Picker
         style={styles.pickerStyle}
         mode="dropdown"
@@ -22,9 +18,11 @@ function Tracking({ navigation }) {
         onValueChange={(itemValue, itemIndex) => setTask(itemValue)}
         prompt="Choose Task..."
       >
-        <Picker.Item label="Tilling" value="tilling" />
-        <Picker.Item label="Fertilizing" value="fertilizing" />
-        <Picker.Item label="Add new..." value="new" />
+        {tasks
+          ? tasks.map((task) => (
+              <Picker.Item label={task.taskName} value={option.taskId} />
+            ))
+          : null}
       </Picker>
 
       <Picker
@@ -41,7 +39,7 @@ function Tracking({ navigation }) {
 
       <TouchableOpacity
         style={styles.buttons}
-        onPress={() => navigation.navigate("Maps")}
+        onPress={(task, field) => navigation.navigate("Maps")}
       >
         <Text style={styles.buttonText}>START</Text>
       </TouchableOpacity>

@@ -15,12 +15,12 @@ import { addTask } from "../firebase/fb.methods";
 export default function AddNewItem({ navigation }) {
   const [taskName, setTaskName] = useState("");
   const [taskType, setTaskType] = useState("");
-  const [taskProgress, setTaskProgress] = useState("");
+  const [taskStatus, setTaskStatus] = useState("TO DO");
 
   const emptyState = () => {
     setTaskName("");
     setTaskType("");
-    setTaskProgress("0%");
+    setTaskStatus("TO DO");
   };
   /*
   const taskTypes = {
@@ -41,8 +41,7 @@ export default function AddNewItem({ navigation }) {
   ];
 
   const onPress = () => {
-    setTaskProgress("0%");
-    addTask(taskName, taskType, taskProgress);
+    addTask(taskName, taskType, taskStatus);
     navigation.navigate("Dashboard");
     emptyState();
   };
@@ -68,7 +67,11 @@ export default function AddNewItem({ navigation }) {
         >
           {/*{Object.keys(taskTypes).map((key) => {*/}
           {taskTypes.map((option) => (
-            <Picker.Item label={option.taskName} value={option.taskId} />
+            <Picker.Item
+              label={option.taskName}
+              value={option.taskName}
+              key={option.taskId}
+            />
           ))}
         </Picker>
         <TouchableOpacity style={styles.inputBtn} onPress={onPress}>
