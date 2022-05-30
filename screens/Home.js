@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { StatusBar } from "expo-status-bar";
-import { StyleSheet, Text, View, TouchableOpacity, Image } from "react-native";
+import { StyleSheet, View, TouchableOpacity, Image } from "react-native";
+import { Button, Input, Layout, Text, Icon } from "@ui-kitten/components";
 //import { useNavigation } from "@react-navigation/native";
 
 export default function Home({ navigation }) {
@@ -8,40 +9,35 @@ export default function Home({ navigation }) {
   return (
     <View style={styles.container}>
       <StatusBar style="auto" />
-      <Image style={styles.image} source={require("../assets/temp_logo.png")} />
       <View style={styles.welcomeContainer}>
-        <Text style={styles.welcomeText}>WELCOME TO</Text>
-        <Text style={styles.welcomeText}>AgriTrack!</Text>
-        <Text style={styles.starterText}>
+        <Image
+          style={styles.image}
+          source={require("../assets/temp_logo.png")}
+        />
+        <Text style={styles.titleText} category="h1">
+          WELCOME TO AgriTrack!
+        </Text>
+        <Text style={styles.infoText}>
           Start Tracking by first registering or signing in if you have account
         </Text>
       </View>
-
-      <TouchableOpacity
-        style={styles.btn}
-        onPress={() => navigation.navigate("Registration")}
-      >
-        <Text style={styles.text}>Sign Up</Text>
-      </TouchableOpacity>
-      <TouchableOpacity
-        style={styles.btn}
-        onPress={() => navigation.navigate("Login")}
-      >
-        <Text style={styles.text}>Sign In</Text>
-      </TouchableOpacity>
+      <Layout style={styles.btnContainer}>
+        <Button
+          style={styles.btn}
+          size="giant"
+          onPress={() => navigation.navigate("Registration")}
+        >
+          Sign up
+        </Button>
+        <Button
+          style={styles.btn}
+          size="giant"
+          onPress={() => navigation.navigate("Login")}
+        >
+          Sign in
+        </Button>
+      </Layout>
       {/* FOR DEBUGGING */}
-      <TouchableOpacity
-        style={styles.btn}
-        onPress={() => navigation.navigate("Maps")}
-      >
-        <Text style={styles.text}>Map Debug</Text>
-      </TouchableOpacity>
-      <TouchableOpacity
-        style={styles.btn}
-        onPress={() => navigation.navigate("AddNewField")}
-      >
-        <Text style={styles.text}>Add new Field</Text>
-      </TouchableOpacity>
     </View>
   );
 }
@@ -58,46 +54,40 @@ const styles = StyleSheet.create({
   image: {
     width: "70%",
     aspectRatio: 1,
-    marginBottom: 40,
-    marginTop: 20,
-  },
-  btn: {
-    width: "70%",
-    height: 50,
-    padding: 10,
-    borderWidth: 1,
-    borderRadius: 20,
-    backgroundColor: "black",
-    marginTop: 10,
-    alignItems: "center",
-    justifyContent: "center",
     marginBottom: 10,
+    marginTop: "20%",
   },
-  welcomeText: {
-    fontSize: 34,
-    fontWeight: "bold",
-    textAlign: "center",
+  titleText: {
     color: "#59963f",
-    letterSpacing: 5,
-  },
-  starterText: {
-    fontSize: 14,
     fontWeight: "bold",
-    color: "black",
     textAlign: "center",
-    padding: 30,
+  },
+  infoText: {
+    textAlign: "center",
+    marginHorizontal: 16,
+    marginTop: 14,
+    color: "grey",
   },
   welcomeContainer: {
-    width: "100%",
+    flex: 1,
+    width: "80%",
     height: "20%",
     /*backgroundColor: "#a7d199",*/
     justifyContent: "center",
+    alignItems: "center",
+    paddingTop: 32,
   },
-  text: {
-    fontSize: 16,
-    lineHeight: 21,
-    fontWeight: "bold",
-    letterSpacing: 0.25,
-    color: "white",
+  btn: {
+    backgroundColor: "black",
+    borderRadius: 20,
+    borderColor: "black",
+    marginTop: 16,
+    marginHorizontal: 16,
+  },
+  btnContainer: {
+    flex: 1,
+    marginTop: 36,
+    paddingHorizontal: 16,
+    width: "85%",
   },
 });

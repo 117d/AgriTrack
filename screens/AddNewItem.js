@@ -1,46 +1,42 @@
 import React, { useState } from "react";
-import {
-  StyleSheet,
-  Text,
-  View,
-  TouchableOpacity,
-  Image,
-  TextInput,
-} from "react-native";
+import { StyleSheet, View, TouchableOpacity, Image } from "react-native";
 import { Picker } from "@react-native-picker/picker";
 import { StatusBar } from "expo-status-bar";
 
 import { addTask } from "../firebase/fb.methods";
 
+import {
+  Input,
+  Button,
+  Text,
+  Layout,
+  SelectItem,
+  Select,
+  IndexPath,
+} from "@ui-kitten/components";
+
 export default function AddNewItem({ navigation }) {
   const [taskName, setTaskName] = useState("");
   const [taskType, setTaskType] = useState("");
   const [taskStatus, setTaskStatus] = useState("TO DO");
+  const [selectedIndex, setSelectedIndex] = useState(new IndexPath(0));
 
   const emptyState = () => {
     setTaskName("");
     setTaskType("");
     setTaskStatus("TO DO");
   };
-  /*
-  const taskTypes = {
-    1: "Tilling",
-    2: "Fertilizing",
-    3: "Spraying",
-    4: "Planting",
-    5: "Harvesting",
-    6: "Other",
-  };*/
+
   const taskTypes = [
-    { taskId: "1", taskName: "Tilling" },
-    { taskId: "2", taskName: "Fertilizing" },
-    { taskId: "3", taskName: "Spraying" },
-    { taskId: "4", taskName: "Planting" },
-    { taskId: "5", taskName: "Harvesting" },
-    { taskId: "6", taskName: "Other" },
+    { taskId: 1, taskName: "Tilling" },
+    { taskId: 2, taskName: "Fertilizing" },
+    { taskId: 3, taskName: "Spraying" },
+    { taskId: 4, taskName: "Planting" },
+    { taskId: 5, taskName: "Harvesting" },
+    { taskId: 6, taskName: "Other" },
   ];
 
-  const onPress = () => {
+  const clickedPress = () => {
     addTask(taskName, taskType, taskStatus);
     navigation.navigate("Dashboard");
     emptyState();
@@ -51,32 +47,37 @@ export default function AddNewItem({ navigation }) {
       <View style={styles.welcomeContainer}></View>
       <View style={styles.addItemForm}>
         <Text style={styles.textTitle}>ADD NEW ITEM</Text>
-        <TextInput
-          style={styles.input}
-          placeholder="Task Name"
-          value={taskName}
-          onChangeText={(taskName) => setTaskName(taskName)}
-        />
-        <Picker
-          style={styles.pickerStyle}
-          mode="dropdown"
-          selectedValue={taskType}
-          prompt="Choose Type..."
-          //onValueChange={(itemValue, itemIndex) => setTaskType(itemValue)}
-          onValueChange={(itemValue, itemIndex) => setTaskType(itemValue)}
-        >
-          {/*{Object.keys(taskTypes).map((key) => {*/}
-          {taskTypes.map((option) => (
-            <Picker.Item
-              label={option.taskName}
-              value={option.taskName}
-              key={option.taskId}
-            />
-          ))}
-        </Picker>
-        <TouchableOpacity style={styles.inputBtn} onPress={onPress}>
-          <Text style={styles.buttonText}>Add</Text>
-        </TouchableOpacity>
+        <Layout level="1" style={styles.itemsContainer}>
+          <Input
+            style={styles.input}
+            placeholder="Task Name"
+            value={taskName}
+            onChangeText={(taskName) => setTaskName(taskName)}
+          />
+          <Select
+            value={taskTypes[selectedIndex.row].taskName}
+            style={styles.pickerStyle}
+            mode="dropdown"
+            selectedIndex={selectedIndex}
+            prompt="Choose Task..."
+            onSelect={(index) => setSelectedIndex(index)}
+          >
+            {taskTypes.map((type) => (
+              <SelectItem
+                title={type.taskName}
+                value={type.taskId}
+                key={type.taskId}
+              />
+            ))}
+          </Select>
+          <Button
+            style={styles.inputBtn}
+            onPress={() => clickedPress()}
+            size="giant"
+          >
+            Add
+          </Button>
+        </Layout>
       </View>
     </View>
   );
@@ -88,6 +89,12 @@ const styles = StyleSheet.create({
     backgroundColor: "white",
     alignItems: "center",
     justifyContent: "center",
+  },
+  itemsContainer: {
+    padding: 20,
+    height: "50%",
+    alignItems: "center",
+    width: "100%",
   },
   buttonText: {
     //marginTop: 40,
@@ -114,33 +121,21 @@ const styles = StyleSheet.create({
     marginBottom: 70,
   },
   pickerStyle: {
-    width: "80%",
+    width: "100%",
     borderRadius: 25,
     height: 50,
     alignItems: "center",
     justifyContent: "center",
     marginTop: 40,
     backgroundColor: "white",
-    borderColor: "black",
-    borderWidth: 5,
   },
   inputBtn: {
-    width: "50%",
-    height: 50,
-    padding: 10,
-    borderWidth: 1,
-    borderRadius: 20,
-    backgroundColor: "black",
-    marginTop: 30,
-    alignItems: "center",
-    justifyContent: "center",
+    marginTop: 15,
   },
   input: {
-    width: "80%",
+    width: "100%",
     height: 50,
     padding: 15,
-    borderWidth: 2,
-    borderRadius: 40,
     borderColor: "black",
     marginBottom: 20,
   },

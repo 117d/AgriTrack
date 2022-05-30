@@ -1,14 +1,11 @@
 import React, { useState, useEffect } from "react";
 import {
   StyleSheet,
-  Text,
   View,
   TouchableOpacity,
   Image,
   TextInput,
   Dimensions,
-  Modal,
-  Button,
 } from "react-native";
 import { Picker } from "@react-native-picker/picker";
 import { StatusBar } from "expo-status-bar";
@@ -16,6 +13,18 @@ import MapView, { Marker } from "react-native-maps";
 import * as Location from "expo-location";
 import * as geolib from "geolib";
 import { addField } from "../firebase/fb.methods";
+import {
+  Button,
+  Text,
+  Modal,
+  Card,
+  Icon,
+  Input,
+  Spinner,
+  Select,
+  SelectItem,
+  IndexPath,
+} from "@ui-kitten/components";
 
 const dummyCoords = [
   { latitude: 52.23982496430413, longitude: 20.996974892914295 },
@@ -40,7 +49,8 @@ const crops = [
   "Sunflower",
   "Other",
 ];
-export default function AddNewField({ navigation }) {
+export default function AddNewField({ navigation, updated }) {
+  const [selectedIndex, setSelectedIndex] = useState(new IndexPath(0));
   const [fieldName, setFieldName] = useState("");
   const [cropType, setCropType] = useState("");
   const [currLocation, setCurrLocation] = useState({
@@ -57,6 +67,7 @@ export default function AddNewField({ navigation }) {
     addField(fieldName, plgnCoords, plgnArea, cropType);
     console.log("Saved");
     setModalVisible(!modalVisible);
+    updated();
     navigation.navigate("Dashboard");
   };
   const cancelSave = () => {
@@ -89,6 +100,12 @@ export default function AddNewField({ navigation }) {
     })();
   }, []);
 
+  const renderLoading = () => (
+    <View style={styles.loading}>
+      <Spinner size="giant" />
+    </View>
+  );
+
   const pressedSave = () => {
     setModalVisible(true);
     const areaInM2 = geolib.getAreaOfPolygon(plgnCoords);
@@ -109,55 +126,53 @@ export default function AddNewField({ navigation }) {
   //check for polygon array
   console.log("array of plgn coords: " + JSON.stringify(plgnCoords));
 
+  const SaveIcon = (props) => <Icon name="save-outline" {...props} />;
+
   return (
     <View style={styles.container}>
       <Modal
         animationType="slide"
         transparent={true}
         visible={modalVisible}
+        backdropStyle={styles.backdrop}
         onRequestClose={() => {
           Alert.alert("Modal has been closed.");
           setModalVisible(!modalVisible);
         }}
       >
-        <View style={styles.modal}>
-          <View style={styles.modalView}>
-            <Text style={styles.text}>Enter Field Name</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="Name"
-              value={fieldName}
-              onChangeText={(name) => setFieldName(name)}
-            />
-            <Picker
-              style={{
-                color: "white",
-                borderBottomColor: "white",
-                borderWidth: 2,
-              }}
-              mode="dropdown"
-              selectedValue={cropType}
-              prompt="Choose Type..."
-              onValueChange={(itemValue, itemIndex) => setCropType(itemValue)}
-            >
-              {crops.map((crop, index) => (
-                <Picker.Item label={crop} value={crop} key={index} />
-              ))}
-            </Picker>
-            <Text style={styles.text}>Area: {plgnArea} ha</Text>
-            <View style={styles.button}>
-              <TouchableOpacity style={styles.inputBtn} onPress={saveField}>
-                <Text style={styles.inputBtnTxt}>Save</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.inputBtn} onPress={cancelSave}>
-                <Text style={styles.inputBtnTxt}>Cancel</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.inputBtn} onPress={clearFields}>
-                <Text style={styles.inputBtnTxt}>Clear</Text>
-              </TouchableOpacity>
-            </View>
+        <Card style={{ minHeight: "70%" }}>
+          <Text style={styles.text}>Enter Field Name</Text>
+          <Input
+            style={styles.input}
+            placeholder="Name"
+            value={fieldName}
+            onChangeText={(name) => setFieldName(name)}
+          />
+          <Select
+            style={styles.pickerStyle}
+            mode="dropdown"
+            value={cropType[selectedIndex.row]}
+            selectedIndex={selectedIndex}
+            prompt="Choose Type..."
+            onSelect={(index) => setSelectedIndex(index)}
+          >
+            {crops.map((crop, index) => (
+              <SelectItem title={crop} value={crop} key={index} />
+            ))}
+          </Select>
+          <Text style={styles.text}>Area: {plgnArea} ha</Text>
+          <View style={styles.button}>
+            <Button style={styles.inputBtn} onPress={saveField}>
+              Save
+            </Button>
+            <Button style={styles.inputBtn} onPress={cancelSave}>
+              Cancel
+            </Button>
+            <Button style={styles.inputBtn} onPress={clearFields}>
+              Clear
+            </Button>
           </View>
-        </View>
+        </Card>
       </Modal>
       {currLocation.latitude != null ? (
         <MapView
@@ -171,6 +186,7 @@ export default function AddNewField({ navigation }) {
             latitudeDelta: 0.0022,
             longitudeDelta: 0.0021,
           }}
+          zoomEnabled={true}
           followsUserLocation={true}
           //onPress={(e) => console.log(e.nativeEvent.coordinate)}
           onPress={(e) => onMapClick(e)}
@@ -178,13 +194,6 @@ export default function AddNewField({ navigation }) {
           {markers.map((marker, i) => (
             <MapView.Marker coordinate={marker.latlng} key={i} />
           ))}
-          {markers.length > 1 ? (
-            <MapView.Polyline
-              coordinates={plgnCoords}
-              strokeColor={"black"}
-              strokeWidth={3}
-            />
-          ) : null}
           {markers.length >= 3 ? (
             <MapView.Polygon
               coordinates={plgnCoords}
@@ -195,13 +204,19 @@ export default function AddNewField({ navigation }) {
         </MapView>
       ) : null}
       {mapClicked ? (
-        <TouchableOpacity style={styles.addButton} onPress={pressedSave}>
+        <TouchableOpacity
+          //appearance="outline"
+          onPress={pressedSave}
+          style={styles.addButton}
+        >
           <Image
             style={styles.image}
             source={require("../assets/save_icon.png")}
           />
         </TouchableOpacity>
-      ) : null}
+      ) : (
+        renderLoading()
+      )}
     </View>
   );
 }
@@ -269,6 +284,7 @@ const styles = StyleSheet.create({
     bottom: 10,
     alignSelf: "center",
     justifyContent: "space-between",
+    alignContent: "center",
     backgroundColor: "white",
     borderWidth: 0.5,
     borderRadius: 50,
@@ -277,43 +293,44 @@ const styles = StyleSheet.create({
     width: 80,
     right: 20,
     bottom: 20,
-    //alignContent: "center",
+    alignContent: "center",
     shadowColor: "rgba(0,0,0, .4)", // IOS
     shadowOffset: { height: 1, width: 1 }, // IOS
     shadowOpacity: 1, // IOS
     shadowRadius: 1, //IOS
     backgroundColor: "#fff",
     elevation: 2, // Android
+    overflow: "hidden",
   },
   buttonTxt: {
     fontSize: 25,
     fontWeight: "bold",
     textAlign: "center",
   },
+  loading: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+  },
   image: {
     width: "60%",
     aspectRatio: 1,
-    //marginBottom: 80,
-    //marginTop: 20,\
-    marginLeft: 14,
-    marginTop: 14,
+    alignSelf: "center",
+    margin: 15,
   },
   text: {
     fontSize: 16,
     fontWeight: "400",
     textAlign: "center",
-    color: "white",
   },
   input: {
     paddingTop: 10,
-    borderColor: "grey",
-    borderBottomWidth: 2,
-    color: "white",
+    marginBottom: 15,
   },
   button: {
     flexDirection: "row",
     flex: 1,
-    justifyContent: "center",
+    justifyContent: "space-between",
   },
   modal: {
     width: "80%",
@@ -332,7 +349,6 @@ const styles = StyleSheet.create({
     padding: 10,
     borderWidth: 1,
     borderRadius: 20,
-    backgroundColor: "white",
     marginTop: 10,
     alignItems: "center",
     justifyContent: "center",
@@ -345,18 +361,13 @@ const styles = StyleSheet.create({
     letterSpacing: 0.25,
     color: "black",
   },
+  pickerStyle: {
+    width: "100%",
+    borderRadius: 25,
+    height: 50,
+    alignItems: "center",
+    justifyContent: "center",
+    marginTop: 40,
+    backgroundColor: "white",
+  },
 });
-
-//polyline
-/*
-{markers.length > 0
-            ? markers.map((marker, i) => (
-                <MapView.Polyline
-                  coordinates={marker.latlng}
-                  key={i}
-                  strokeColor="black"
-                  strokeWidth={3}
-                />
-              ))
-            : null}
-            */

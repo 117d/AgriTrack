@@ -1,31 +1,34 @@
 import React, { useState, useEffect, useRef } from "react";
 import {
   StyleSheet,
-  Text,
   View,
   TouchableOpacity,
   Image,
   TextInput,
   Dimensions,
-  Modal,
-  Button,
 } from "react-native";
+import { Modal, Button, Text, Card } from "@ui-kitten/components";
 import { Picker } from "@react-native-picker/picker";
 import { StatusBar } from "expo-status-bar";
 import MapView from "react-native-maps";
 import * as Location from "expo-location";
 import * as geolib from "geolib";
-import haversine from "haversine";
 import { editTask } from "../firebase/fb.methods";
+import * as TaskManager from "expo-task-manager";
 const { width, height } = Dimensions.get("window");
 const ASPECT_RATIO = width / height;
 const LATITUDE_DELTA = 0.0922;
 const LONGITUDE_DELTA = LATITUDE_DELTA * ASPECT_RATIO;
 
-export default function Map({ navigation, task, field, vehicleWidth }) {
+const LOCATION_TASK_NAME = "background-location-task";
+
+export default function Map({ navigation, route }) {
+  const [field, setField] = useState(route.params.field);
+  const [task, setTask] = useState(route.params.task);
   const [currLocation, setCurrLocation] = useState({
     latitude: null,
     longitude: null,
+    time: null,
   });
   const prevLocation = usePrevious(currLocation);
   const [modalVisible, setModalVisible] = useState(false);
@@ -34,36 +37,68 @@ export default function Map({ navigation, task, field, vehicleWidth }) {
   const [speed, setSpeed] = useState(0);
   const [area, setArea] = useState(0);
   const [time, setTime] = useState({
-    seconds: 0,
-    minutes: 0,
+    seconds: 30,
+    minutes: 1,
     hours: 0,
   });
-  const [initialCoords, setInitialCoords] = useState({
-    latitude: null,
-    longitude: null,
-  });
+
+  const [pathCoords, setPathCoords] = useState([]);
+
   const mapView = React.createRef();
-  //dummy values
-  const dummyCoords = [
-    { latitude: 52.23982496430413, longitude: 20.996974892914295 },
-    { latitude: 52.23964963014553, longitude: 20.996877998113632 },
-    { latitude: 52.23963115226643, longitude: 20.99720422178507 },
-  ];
-  const plgnCoordinates = dummyCoords;
+
+  TaskManager.defineTask(LOCATION_TASK_NAME, ({ data, error }) => {
+    if (error) {
+      // Error occurred - check `error.message` for more details.
+      return;
+    }
+    if (data) {
+      const { locations } = data;
+      //console.log("data gotten: " + JSON.stringify(data));
+      let currLocationData = {
+        latitude: data.locations[0].coords.latitude,
+        longitude: data.locations[0].coords.longitude,
+        time: data.locations[0].timestamp,
+      };
+      if (currLocation != currLocationData) {
+        setCurrLocation(currLocationData);
+        if (
+          startTracking &&
+          currLocation.latitude != null &&
+          currLocation.longitude != null
+        ) {
+          setPathCoords([
+            ...pathCoords,
+            {
+              latitude: currLocation.latitude,
+              longitude: currLocation.longitude,
+            },
+          ]);
+        }
+        console.log("Path coordinates: " + JSON.stringify(pathCoords));
+        console.log(
+          "curr loc data was logged: " + JSON.stringify(currLocationData)
+        );
+      }
+      // console.log("current location is =>  " + JSON.stringify(currLocation));
+      // do something with the locations captured in the background
+    }
+  });
+
   const emptyState = () => {
     setDistance(0);
     setSpeed(0);
     setArea(0);
     setTime({ seconds: 0, minutes: 0, hours: 0 });
   };
+
   //handle session saving
   const saveSession = () => {
     const progressData = {
+      travelledPath: pathCoords,
       distanceTravelled: distance,
-      areaCovered: area,
       time: time,
     };
-    const progressChange = "IN PROGRESS";
+    let progressChange = "IN PROGRESS";
     const dateFinished = null;
     let today = new Date();
     let date =
@@ -75,7 +110,15 @@ export default function Map({ navigation, task, field, vehicleWidth }) {
     area == field.area
       ? ((progressChange = "DONE"), (dateFinished = date))
       : (progressChange = "IN PROGRESS");
-    editTask(task.id, null, null, progressChange, progressData);
+    editTask(
+      task.id,
+      null,
+      null,
+      progressChange,
+      progressData,
+      task.dateCreated,
+      dateFinished
+    );
     console.log("Saved");
     setModalVisible(!modalVisible);
     navigation.navigate("Dashboard");
@@ -90,16 +133,17 @@ export default function Map({ navigation, task, field, vehicleWidth }) {
     setModalVisible(!modalVisible);
   };
 
+  /* GET PREVIOUS VALUE OF THE LOCATION */
   function usePrevious(value) {
     const ref = useRef();
     useEffect(() => {
       ref.current = value;
-    });
+    }, [value]);
     if (ref.current) {
       console.log(
         "REF.CURRENT.LAT: " +
           ref.current.latitude +
-          "REF.CURRENT.LONG: " +
+          " REF.CURRENT.LONG: " +
           ref.current.longitude
       );
     }
@@ -107,101 +151,103 @@ export default function Map({ navigation, task, field, vehicleWidth }) {
   }
 
   const clickedTracking = () => {
-    setStartTracking(!startTracking);
-    console.log(JSON.stringify(currLocation));
-
-    console.log(typeof currLocation.latitude);
-    mapView.current.animateCamera(
-      {
-        center: {
-          latitude: 51.1597185,
-          longitude: 71.455235,
-        },
-        pitch: 45,
-        heading: 200,
-        altitude: 200,
-        zoom: 50,
-      },
-      { duration: 1000 }
+    setStartTracking(true);
+    console.log(
+      "Clicked tracking and the current location is: " +
+        JSON.stringify(currLocation)
     );
   };
 
-  //** GET USER'S LOCATION **//
-  useEffect(() => {
-    (async () => {
-      let { status } = await Location.requestForegroundPermissionsAsync();
-      if (status !== "granted") {
-        setErrorMsg("Permission to access location was denied");
-        return;
-      }
-      if (currLocation.latitude != null) {
-        let prevLocation = usePrevious(currLocation);
-        console.log("previous location" + prevLocation);
-      }
-      let location = await Location.getCurrentPositionAsync({
-        accuracy: Location.Accuracy.High,
-        timeInterval: 10000,
-      });
-      setCurrLocation({
-        latitude: location.coords.latitude,
-        longitude: location.coords.longitude,
-      });
-      if (prevLocation) {
-        setDistance(
-          distance + geolib.getDistance(prevLocation, currLocation, 10)
-        );
-      }
-      if (startTracking) {
-        calcSpeed1 = prevLocation;
-        calcSpeed1.time = prevLocation.timestamp;
-        calcSpeed2 = currLocation;
-        calcSpeed2.time = currLocation.timestamp;
-        setSpeed(getSpeed(calcSpeed1, calcSpeed2));
-        console.log("SPeed: " + speed);
-        mapView.current.animateCamera(
-          {
-            center: {
-              latitude: currLocation.latitude,
-              longitude: currLocation.longitude,
-            },
-            pitch: 90,
-            heading: 45,
-            altitude: 200,
-            zoom: 15,
+  const followCamera = () => {
+    if (startTracking) {
+      mapView.current.animateCamera(
+        {
+          center: {
+            latitude: currLocation.latitude,
+            longitude: currLocation.longitude,
           },
-          1000
-        );
-      }
-    })();
-  }, []);
+          pitch: 75,
+          heading: 360,
+          altitude: 100,
+          zoom: 80,
+        },
+        { duration: 1000 }
+      );
+    }
+  };
+
+  //** GET USER'S LOCATION **//
+  const calculateDistance = () => {
+    if (startTracking) {
+      let distanceCalc = geolib.getDistance(
+        { latitude: prevLocation.latitude, longitude: prevLocation.longitude },
+        { latitude: currLocation.latitude, longitude: currLocation.longitude },
+        100
+      );
+      console.log("calculated distance => " + distanceCalc);
+      setDistance(distance + distanceCalc);
+    }
+  };
+
+  const calculateSpeed = () => {
+    if (startTracking) {
+      let calcSpeed1 = prevLocation;
+      //console.log("calcSpeed 1 object is: " + JSON.stringify(calcSpeed1));
+      calcSpeed1.time = prevLocation.time;
+      let calcSpeed2 = currLocation;
+      calcSpeed2.time = currLocation.time;
+      setSpeed(geolib.getSpeed(calcSpeed1, calcSpeed2));
+      console.log("Speed: " + geolib.getSpeed(calcSpeed1, calcSpeed2));
+    }
+  };
+
+  const requestPermissions = async () => {
+    const { status } = await Location.requestBackgroundPermissionsAsync();
+    if (status === "granted") {
+      await Location.startLocationUpdatesAsync(LOCATION_TASK_NAME, {
+        accuracy: Location.Accuracy.Highest,
+        //timeInterval: 10000,
+        distanceInterval: 3,
+      });
+    }
+  };
+
+  useEffect(() => {
+    console.log("useEffect was called");
+    requestPermissions();
+    followCamera();
+    if (prevLocation) {
+      calculateSpeed();
+      calculateDistance();
+    }
+  }, [pathCoords]);
 
   return (
     <View style={styles.container}>
       <StatusBar style="light" />
       <Modal
+        style={styles.modal}
         animationType="slide"
         transparent={true}
         visible={modalVisible}
+        backdropStyle={styles.backdrop}
         onRequestClose={() => {
           Alert.alert("Modal has been closed.");
           setModalVisible(!modalVisible);
         }}
       >
-        <View style={styles.modal}>
-          <View style={styles.modalView}>
-            <Text style={styles.text}>Save Session?</Text>
-
-            <View style={styles.button}>
-              <TouchableOpacity style={styles.inputBtn} onPress={saveSession}>
-                <Text style={styles.inputBtnTxt}>Save</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.inputBtn} onPress={deleteSession}>
-                <Text style={styles.inputBtnTxt}>Delete</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.inputBtn} onPress={resumeSession}>
-                <Text style={styles.inputBtnTxt}>Resume</Text>
-              </TouchableOpacity>
-            </View>
+        <View>
+          <Text style={styles.text}>Save Session?</Text>
+          <View style={styles.button}>
+            <Button style={styles.inputBtn} onPress={() => saveSession()}>
+              Save
+            </Button>
+            <Button style={styles.inputBtn} onPress={() => deleteSession()}>
+              Delete
+            </Button>
+            <Button style={styles.inputBtn} onPress={() => resumeSession()}>
+              Resume
+            </Button>
           </View>
         </View>
       </Modal>
@@ -215,32 +261,43 @@ export default function Map({ navigation, task, field, vehicleWidth }) {
           initialRegion={{
             latitude: currLocation.latitude,
             longitude: currLocation.longitude,
-            latitudeDelta: 0.0022,
-            longitudeDelta: 0.0021,
+            latitudeDelta: 0.0001,
+            longitudeDelta: 0.0001,
           }}
           followsUserLocation={true}
           showsCompass={true}
+          loadingEnabled={true}
+          provider={"google"}
           //onPress={(e) => console.log(e.nativeEvent.coordinate)}
         >
-          {plgnCoordinates != null ? (
+          {field.coordinates != null ? (
             <MapView.Polygon
-              coordinates={plgnCoordinates}
+              coordinates={field.coordinates}
               fillColor="rgba(255, 0, 0, 0.5)"
               strokeColor="red"
             />
           ) : null}
-          {clickedTracking ? (
+          {startTracking && pathCoords.length > 0 ? (
             <MapView.Polyline
-              coordinates={currLocation}
-              strokeColor="rgba(255, 246, 84, 0.75)"
-              strokeWidth={12}
+              coordinates={pathCoords}
+              strokeColor="rgba(25, 181, 254, 0.75)"
+              strokeWidth={36}
+              geodesic={true}
+            />
+          ) : null}
+          {startTracking ? (
+            <MapView.Marker
+              coordinate={{
+                latitude: currLocation.latitude,
+                longitude: currLocation.longitude,
+              }}
             />
           ) : null}
         </MapView>
       ) : null}
       <View style={styles.navBar}>
         <Text style={styles.navBarText}>
-          Speed: {speed} km/h | Area: {area} Ha | Time:{" "}
+          Speed: {speed} km/h | Area: {field.area} Ha | Time:{" "}
           {time.hours < 10 ? "0" + time.hours : time.hours}:
           {time.minutes < 10 ? "0" + time.minutes : time.minutes}:
           {time.seconds < 10 ? "0" + time.seconds : time.seconds}
@@ -252,12 +309,24 @@ export default function Map({ navigation, task, field, vehicleWidth }) {
           <Text style={styles.bottomBarContent}>{distance} km</Text>
         </View>
       </View>
-      <TouchableOpacity style={styles.addButton} onPress={clickedTracking}>
-        <Image
-          style={styles.image}
-          source={require("../assets/start_icon.png")}
-        />
-      </TouchableOpacity>
+      {!startTracking ? (
+        <TouchableOpacity style={styles.addButton} onPress={clickedTracking}>
+          <Image
+            style={styles.image}
+            source={require("../assets/start_icon.png")}
+          />
+        </TouchableOpacity>
+      ) : (
+        <TouchableOpacity
+          style={styles.addButton}
+          onPress={() => setModalVisible(true)}
+        >
+          <Image
+            style={styles.image}
+            source={require("../assets/save_icon.png")}
+          />
+        </TouchableOpacity>
+      )}
     </View>
   );
 }
@@ -275,7 +344,6 @@ const styles = StyleSheet.create({
     height: 80,
     //width: width,
     position: "absolute",
-    //top: 0,
     top: 0,
     bottom: 0,
     left: 0,
@@ -329,6 +397,7 @@ const styles = StyleSheet.create({
     bottom: 10,
     alignSelf: "center",
     justifyContent: "space-between",
+    alignContent: "center",
     backgroundColor: "white",
     borderWidth: 0.5,
     borderRadius: 50,
@@ -337,13 +406,14 @@ const styles = StyleSheet.create({
     width: 80,
     right: 20,
     bottom: 20,
-    //alignContent: "center",
+    alignContent: "center",
     shadowColor: "rgba(0,0,0, .4)", // IOS
     shadowOffset: { height: 1, width: 1 }, // IOS
     shadowOpacity: 1, // IOS
     shadowRadius: 1, //IOS
     backgroundColor: "#fff",
     elevation: 2, // Android
+    overflow: "hidden",
   },
   buttonTxt: {
     fontSize: 25,
@@ -353,10 +423,8 @@ const styles = StyleSheet.create({
   image: {
     width: "60%",
     aspectRatio: 1,
-    //marginBottom: 80,
-    //marginTop: 20,\
-    marginLeft: 15,
-    marginTop: 15,
+    alignSelf: "center",
+    margin: 15,
   },
   text: {
     fontSize: 16,
@@ -373,26 +441,25 @@ const styles = StyleSheet.create({
   button: {
     flexDirection: "row",
     flex: 1,
-    justifyContent: "center",
+    justifyContent: "space-between",
   },
   modal: {
-    width: "70%",
-    height: "20%",
+    width: "80%",
+    height: "15%",
     alignItems: "center",
     justifyContent: "center",
     position: "absolute",
     top: height / 2.5,
-    left: width / 6.3,
+    left: width / 9,
     backgroundColor: "rgba(0,0,0,0.7)",
     paddingTop: 10,
   },
   inputBtn: {
-    width: "40%",
+    width: "30%",
     height: 50,
     padding: 10,
     borderWidth: 1,
     borderRadius: 20,
-    backgroundColor: "white",
     marginTop: 10,
     alignItems: "center",
     justifyContent: "center",

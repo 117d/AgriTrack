@@ -1,30 +1,45 @@
 import React, { useState, useEffect } from "react";
-import { StatusBar } from "expo-status-bar";
 import {
   StyleSheet,
-  Text,
   View,
   TouchableOpacity,
   Image,
   Dimensions,
-  Modal,
+  //Modal,
+  StatusBar,
 } from "react-native";
 import { Picker } from "@react-native-picker/picker";
 import { getFields, getTasks, logOut } from "../firebase/fb.methods";
+import {
+  Layout,
+  Button,
+  Icon,
+  Text,
+  Modal,
+  Card,
+  Select,
+  SelectItem,
+  IndexPath,
+} from "@ui-kitten/components";
+
 import firebase from "firebase/compat/app";
 const { width, height } = Dimensions.get("window");
 
-export default function Dashboard({ navigation }) {
+export default function Dashboard(props) {
+  const { navigation } = props;
   let currUserId = firebase.auth().currentUser.uid;
   const [firstName, setFirstName] = useState("");
   const [modalVisible, setModalVisible] = useState(false);
   const [task, setTask] = useState(null);
-  const [userTasks, setUserTasks] = useState([]);
   const [field, setField] = useState(null);
-  const [userFields, setUserFields] = useState([]);
+  const [selectedIndex, setSelectedIndex] = useState(new IndexPath(0));
+  const [selectedIndex2, setSelectedIndex2] = useState(new IndexPath(0));
   const [avatar, setAvatar] = useState(null);
+  const [user, setUser] = useState(null);
+  const [optionsVisible, setOptionsVisible] = useState(false);
+
   // handle the tracking start
-  const saveField = () => {
+  const startTracking = () => {
     console.log("Started");
     setModalVisible(!modalVisible);
     navigation.navigate("Maps", { task: task, field: field });
@@ -37,10 +52,15 @@ export default function Dashboard({ navigation }) {
     navigation.navigate("AddNewItem");
   };
   const handleFieldChange = () => {
-    navigation.navigate("AddNewField");
+    navigation.navigate("New Field");
   };
+  const handleAddingNewField = () => {
+    setOptionsVisible(!optionsVisible);
+  };
+
   useEffect(() => {
     async function getUserInfo() {
+      console.log("get user info");
       let doc = await firebase
         .firestore()
         .collection("users")
@@ -48,39 +68,90 @@ export default function Dashboard({ navigation }) {
         .get();
 
       if (!doc.exists) {
-        //alert("Not found!");
         setFirstName("Admin");
         //navigation.navigate("Home");
       } else {
+        setUser(doc);
         let dataObj = doc.data();
-        const tasksFromDb = await getTasks();
-        const fieldsFromDb = await getFields();
-        //console.log("user tasks: " + JSON.stringify(tasksFromDb));
-        //console.log("user fields: " + JSON.stringify(fieldsFromDb));
-        setUserTasks(...userTasks, tasksFromDb);
-        setUserFields(...userFields, fieldsFromDb);
-        console.log("user tasks: " + userTasks);
-        userTasks.map((task) =>
-          console.log("Task id: " + task.id + " and name: " + task.taskName)
-        );
         setFirstName(dataObj.firstName);
-        setAvatar(dataObj.profPicUrl);
-        // console.log(await getTasks());
+        setAvatar(dataObj.photoUrl);
       }
     }
     getUserInfo();
-  });
+  }, []);
+
   const onLogOut = () => {
     logOut();
     navigation.replace("Home");
   };
+
   const pressedTracking = () => {
     setModalVisible(true);
   };
+
+  const handleTaskSelection = (index) => {
+    setSelectedIndex(index);
+    setTask(props.tasks[selectedIndex.row]);
+    console.log("task set => " + task);
+  };
+
+  const handleFieldSelection = (index) => {
+    setSelectedIndex2(index);
+    setField(props.fields[selectedIndex2.row]);
+    console.log("field set => " + field);
+  };
+
+  const PeopleIcon = (props) => <Icon name="people" {...props} />;
+  const PersonIcon = (props) => <Icon name="person" {...props} />;
+  const MapIcon = (props) => <Icon name="map" {...props} />;
+  const PlusIcon = (props) => <Icon name="plus" {...props} />;
+  const NavigationIcon = (props) => <Icon name="navigation-2" {...props} />;
+
+  const handleNavigatingToManual = () => {
+    setOptionsVisible(!optionsVisible);
+    navigation.navigate("New Field");
+  };
+
+  const handleNavigatingToTrackingField = () => {
+    setOptionsVisible(!optionsVisible);
+    navigation.navigate("New Tracked Field");
+  };
+
   return (
-    <View style={styles.container}>
+    <Layout style={styles.container}>
+      <StatusBar style="auto" />
       <Modal
         animationType="slide"
+        transparent={true}
+        visible={optionsVisible}
+        backdropStyle={styles.backdrop}
+        onBackdropPress={() => setOptionsVisible(false)}
+        onRequestClose={() => {
+          setOptionsVisible(!optionsVisible);
+        }}
+      >
+        <Card>
+          <Text style={styles.modalTitle}>Choose parameters</Text>
+          <View style={styles.button}>
+            <Button
+              style={styles.inputBtn}
+              onPress={() => handleNavigatingToManual()}
+            >
+              Manually
+            </Button>
+            <Button
+              style={styles.inputBtn}
+              onPress={() => handleNavigatingToTrackingField()}
+            >
+              By Tracking
+            </Button>
+          </View>
+        </Card>
+      </Modal>
+      <Modal
+        animationType="slide"
+        backdropStyle={styles.backdrop}
+        onBackdropPress={() => setModalVisible(false)}
         transparent={true}
         visible={modalVisible}
         onRequestClose={() => {
@@ -88,59 +159,74 @@ export default function Dashboard({ navigation }) {
           setModalVisible(!modalVisible);
         }}
       >
-        <View style={styles.modal}>
-          <View style={styles.modalView}>
-            <Text style={styles.modalTitle}>Choose parameters</Text>
-            <View style={styles.pickForm}>
-              {userTasks && userTasks.length > 0 ? (
-                <Picker
-                  style={styles.pickerStyle}
-                  mode="dropdown"
-                  selectedValue={task}
-                  prompt="Choose Task..."
-                  onValueChange={(itemValue, itemIndex) => setTask(itemValue)}
-                >
-                  {userTasks.map((task) => (
-                    <Picker.Item
-                      label={task.taskName}
-                      value={task.id}
-                      key={task.id}
-                    />
-                  ))}
-                </Picker>
-              ) : null}
-              <Picker
+        <Card>
+          <Text style={styles.modalTitle}>Choose parameters</Text>
+          <View style={styles.card}>
+            {props.tasks && props.tasks.length > 0 ? (
+              <Select
+                value={props.tasks[selectedIndex.row].taskName}
                 style={styles.pickerStyle}
                 mode="dropdown"
-                selectedValue={field}
-                onValueChange={(itemValue, itemIndex) =>
-                  handleFieldChange(itemValue, itemIndex)
-                }
+                selectedIndex={selectedIndex}
+                prompt="Choose Task..."
+                // onSelect={(index) => setSelectedIndex(index)}
+                onSelect={(index) => handleTaskSelection(index)}
+              >
+                {props.tasks.map((task) => (
+                  <SelectItem
+                    title={task.taskName}
+                    value={task.id}
+                    key={task.id}
+                  />
+                ))}
+              </Select>
+            ) : (
+              <Text status={"warning"} style={styles.warningTxt}>
+                No tasks available. Create one by clicking "Add Task" button
+              </Text>
+            )}
+            {props.fields && props.fields.length > 0 ? (
+              <Select
+                value={props.fields[selectedIndex2.row].fieldName}
+                style={styles.pickerStyle}
+                mode="dropdown"
+                selectedIndex={field}
+                onSelect={(index) => handleFieldSelection(index)}
                 prompt="Choose Field..."
               >
-                {userFields && userFields.length > 0 ? (
-                  userFields.map((field) => (
-                    <Picker.Item
-                      label={field.fieldName}
-                      value={field.id}
-                      key={field.id}
-                    />
-                  ))
-                ) : (
-                  <Picker.Item label="Add New" value="new" key={"new"} />
-                )}
-              </Picker>
-            </View>
-            <View style={styles.button}>
-              <TouchableOpacity style={styles.inputBtn} onPress={saveField}>
-                <Text style={styles.inputBtnTxt}>Start</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.inputBtn} onPress={cancelSave}>
-                <Text style={styles.inputBtnTxt}>Cancel</Text>
-              </TouchableOpacity>
-            </View>
+                {props.fields.map((field) => (
+                  <SelectItem
+                    title={field.fieldName}
+                    value={field.id}
+                    key={field.id}
+                  />
+                ))}
+              </Select>
+            ) : (
+              <Text status={"warning"} style={styles.warningTxt}>
+                No fields available. Create one by clicking "Add Field" button
+              </Text>
+            )}
           </View>
-        </View>
+          <View style={styles.button}>
+            {props.tasks.length > 0 && props.fields.length > 0 ? (
+              <Button style={styles.inputBtn} onPress={startTracking}>
+                Start
+              </Button>
+            ) : (
+              <Button
+                style={styles.inputBtn}
+                onPress={() => setModalVisible(false)}
+              >
+                Ok
+              </Button>
+            )}
+
+            <Button style={styles.inputBtn} onPress={cancelSave}>
+              Cancel
+            </Button>
+          </View>
+        </Card>
       </Modal>
       <View style={styles.profileTop}>
         <View style={styles.imageContainer}>
@@ -156,61 +242,97 @@ export default function Dashboard({ navigation }) {
         <Text style={styles.text}>Hello, {firstName}</Text>
       </View>
 
-      <View style={styles.dashboardContainer}>
-        <TouchableOpacity
+      <Layout style={styles.dashboardContainer}>
+        <Button
           style={styles.btn}
           onPress={() => navigation.navigate("UserProfile")}
+          accessoryLeft={PersonIcon}
         >
-          <Text style={styles.buttonText}>Go To Your Profile</Text>
-        </TouchableOpacity>
-        <TouchableOpacity
+          Your Profile
+        </Button>
+        <Button
           style={styles.btn}
-          //onPress={() => navigation.navigate("Tracking")}
           onPress={pressedTracking}
+          accessoryLeft={NavigationIcon}
         >
-          <Text style={styles.buttonText}>Start Tracking</Text>
-        </TouchableOpacity>
-        <TouchableOpacity
+          Start Tracking
+        </Button>
+        <Button
+          style={styles.btn}
+          onPress={() => navigation.navigate("TeamScreen")}
+          accessoryLeft={PeopleIcon}
+        >
+          Your Team
+        </Button>
+        <Button
           style={styles.btn}
           onPress={() => navigation.navigate("AddNewItem")}
+          accessoryLeft={PlusIcon}
         >
-          <Text style={styles.buttonText}>Add Task</Text>
-        </TouchableOpacity>
-        <TouchableOpacity
+          Add Task
+        </Button>
+        <Button
           style={styles.btn}
-          onPress={() => navigation.navigate("AddNewField")}
+          onPress={() => handleAddingNewField()}
+          accessoryLeft={MapIcon}
         >
-          <Text style={styles.buttonText}>Add Field</Text>
-        </TouchableOpacity>
-        <Text style={styles.logoutText} onPress={onLogOut}>
+          Add Field
+        </Button>
+        <Button
+          style={styles.logOutBtn}
+          status={"danger"}
+          onPress={() => onLogOut()}
+        >
           Log Out
-        </Text>
-      </View>
-    </View>
+        </Button>
+      </Layout>
+    </Layout>
   );
 }
-
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    //backgroundColor: "#B8D1A9",
     backgroundColor: "white",
     alignItems: "center",
     justifyContent: "center",
   },
+  modalView: {
+    alignItems: "center",
+    paddingHorizontal: 10,
+  },
+  modalTitle: {
+    marginBottom: 20,
+  },
+  card: {
+    flex: 1,
+    margin: 2,
+  },
   profileTop: {
-    //backgroundColor: "#B8D1A9",
-    backgroundColor: "#8dc27e",
+    backgroundColor: "#3366FF",
     width: width,
     height: "40%",
     justifyContent: "center",
     alignItems: "center",
-    //marginBottom: 300,
+    marginTop: "20%",
+  },
+  warningTxt: {
+    fontWeight: "bold",
+    alignSelf: "center",
+  },
+  logOutBtn: {
+    width: "80%",
+    padding: 10,
+    borderWidth: 1,
+    borderRadius: 20,
+    marginTop: 10,
+    backgroundColor: "red",
+  },
+  backdrop: {
+    backgroundColor: "rgba(0, 0, 0, 0.5)",
   },
   imageContainer: {
-    //marginTop: 20,
     overflow: "hidden",
-    borderColor: "black",
+    borderColor: "#3366FF",
     borderWidth: 3,
     height: 160,
     width: 160,
@@ -222,7 +344,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     width: 300,
-    //borderRadius: 30,
     marginBottom: 200,
     marginTop: 20,
   },
@@ -230,12 +351,9 @@ const styles = StyleSheet.create({
     marginTop: 80,
   },
   image: {
-    //flex: 1,
     width: undefined,
     aspectRatio: 1,
     height: "100%",
-    //paddingBottom: 10,
-    //marginTop: 20,
   },
   textTitle: {
     fontSize: 30,
@@ -244,15 +362,14 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
   },
   btn: {
-    width: "100%",
-    height: 50,
+    width: "80%",
     padding: 10,
     borderWidth: 1,
     borderRadius: 20,
+    borderColor: "black",
     backgroundColor: "black",
     marginTop: 10,
     alignItems: "center",
-    justifyContent: "center",
     marginBottom: 10,
   },
   textInput: {
@@ -270,13 +387,12 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
     fontSize: 18,
     color: "black",
-    //fontFamily: "Inter-Black",
   },
   text: {
     fontSize: 24,
     fontWeight: "bold",
     letterSpacing: 0.25,
-    color: "black",
+    color: "white",
     marginTop: 15,
   },
   buttonText: {
@@ -286,26 +402,20 @@ const styles = StyleSheet.create({
     letterSpacing: 0.25,
     color: "white",
   },
-  //modal
   modal: {
     width: "70%",
-    height: "45%",
+    maxHeight: "50%",
     alignItems: "center",
     justifyContent: "center",
-    position: "absolute",
-    top: height / 3.5,
-    left: width / 6.3,
     backgroundColor: "rgba(0,0,0,0.8)",
     paddingTop: 10,
   },
-
   inputBtn: {
     width: "40%",
     height: 50,
     padding: 10,
     borderWidth: 1,
     borderRadius: 20,
-    backgroundColor: "white",
     marginTop: 10,
     alignItems: "center",
     justifyContent: "center",
@@ -331,12 +441,12 @@ const styles = StyleSheet.create({
     marginTop: 25,
     flexDirection: "row",
     flex: 1,
-    justifyContent: "center",
+    justifyContent: "space-between",
   },
   modalTitle: {
     fontWeight: "bold",
     fontSize: 24,
     marginTop: 15,
-    color: "white",
+    color: "black",
   },
 });

@@ -15,54 +15,72 @@ import { NavigationContainer } from "@react-navigation/native";
 import Loading from "./screens/Loading";
 import UserProfile from "./screens/UserProfile";
 import AddNewField from "./screens/AddNewField";
-import AccountScreen from "./screens/AccountScreen";
+import TeamScreen from "./screens/TeamScreen";
+import AddNewFieldByTracking from "./screens/AddNewFieldByTracking";
 import { LogBox } from "react-native";
 const Stack = createStackNavigator();
 import * as eva from "@eva-design/eva";
-import { ApplicationProvider, Layout, Text } from "@ui-kitten/components";
+import { ApplicationProvider, IconRegistry } from "@ui-kitten/components";
 import { default as theme } from "./assets/theme.json";
 import { EvaIconsPack } from "@ui-kitten/eva-icons";
+import {
+  getFields as GetFields,
+  getTasks as GetTasks,
+  logOut,
+} from "./firebase/fb.methods";
+
 export default function App() {
-  /*if (!firebase.apps.length) {
-    console.log("Connected with Firebase");
-    firebas
-    e.initializeApp(apiKeys.firebaseConfig);
-  }
-  */
   LogBox.ignoreLogs(["Setting a timer for a long period of time"]);
   const [loggedIn, setLoggedIn] = useState(false);
+  const [userFields, setUserFields] = useState([]);
+  const [userTasks, setUserTasks] = useState([]);
 
-  const authenticateUser = () => {
-    // Detected if user is already logged in
+  const getFields = async () => {
+    // console.log("getting new fields");
+    try {
+      setUserFields(await GetFields());
+      //setUserFields(...userFields, await GetFields());
+      console.log("user fields in app.js: " + userFields);
+    } catch (error) {
+      console.log("Error getting fields in App.js: " + error);
+    }
+  };
+
+  const getTasks = async () => {
+    try {
+      setUserTasks(await GetTasks());
+      //setUserTasks(...userTasks, await GetTasks());
+    } catch (error) {
+      console.log("getting tasks in App.js: " + error);
+    }
+  };
+
+  useEffect(() => {
     const auth = getAuth(app);
     onAuthStateChanged(auth, (user) => {
+      console.log("called");
       if (user) {
+        console.log("User name:  " + user.firstName);
         setLoggedIn(true);
       } else {
         setLoggedIn(false);
       }
-      console.log("user: " + JSON.stringify(user));
     });
-  };
-
-  useEffect(() => {
-    if (!loggedIn) {
-      authenticateUser();
-    }
+    getFields();
+    getTasks();
   }, [loggedIn]);
 
   return (
     <>
       <IconRegistry icons={EvaIconsPack} />
-      <ApplicationProvider {...eva} theme={{ ...eva.light, ...theme }}>
+      <ApplicationProvider {...eva} theme={{ ...eva.light }}>
         <NavigationContainer>
           <Stack.Navigator
             screenOptions={{
               headerStyle: {
-                //backgroundColor: "#B8D1A9",
-                backgroundColor: "#8dc27e",
+                backgroundColor: "#3366FF",
               },
-              headerTintColor: "#fff",
+              headerTintColor: "#FFF",
               headerTitleStyle: {
                 fontWeight: "bold",
               },
@@ -85,39 +103,57 @@ export default function App() {
               </>
             ) : (
               <>
-                <Stack.Screen
-                  name="Dashboard"
-                  component={Dashboard}
-                  options={{ title: "Dashboard" }}
-                />
+                <Stack.Screen name="Dashboard" options={{ title: "Dashboard" }}>
+                  {(props) => (
+                    <Dashboard
+                      {...props}
+                      fields={userFields}
+                      tasks={userTasks}
+                    />
+                  )}
+                </Stack.Screen>
                 <Stack.Screen
                   name="Loading"
                   component={Loading}
                   options={{ headerShown: false }}
                 />
                 <Stack.Screen name="Tracking" component={Tracking} />
-                {/*<Stack.Screen name="Maps" component={Maps} />*/}
                 <Stack.Screen
                   name="AddNewItem"
                   component={AddNewItem}
                   options={{ title: "Add New" }}
                 />
 
+                <Stack.Screen name="UserProfile" options={{ title: "Profile" }}>
+                  {(props) => (
+                    <UserProfile
+                      {...props}
+                      fields={userFields}
+                      tasks={userTasks}
+                    />
+                  )}
+                </Stack.Screen>
+
                 <Stack.Screen
-                  name="UserProfile"
-                  component={UserProfile}
-                  options={{ title: "Profile" }}
-                />
-                <Stack.Screen
-                  name="AddNewField"
-                  component={AddNewField}
+                  name="New Field"
                   options={{ title: "Add New Field" }}
-                />
-                <Stack.Screen name="AccountScreen" component={AccountScreen} />
+                >
+                  {(props) => <AddNewField {...props} updated={getFields} />}
+                </Stack.Screen>
                 <Stack.Screen
                   name="Maps"
                   component={Maps}
                   options={{ headerShown: false }}
+                />
+                <Stack.Screen
+                  name="TeamScreen"
+                  component={TeamScreen}
+                  options={{ title: "My Team" }}
+                />
+                <Stack.Screen
+                  name="New Tracked Field"
+                  component={AddNewFieldByTracking}
+                  options={{ headerShown: true }}
                 />
               </>
             )}
