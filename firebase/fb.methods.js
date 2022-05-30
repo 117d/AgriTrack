@@ -28,7 +28,7 @@ export const uploadImage = async (pickedImage) => {
 
     // Create a download URL
     const remoteURL = await snapshot.ref.getDownloadURL();
-    console.log("REMOTE_URL" + remoteURL);
+    console.log("REMOTE_URL " + remoteURL);
     // Return the URL
     return remoteURL;
   } catch (error) {
@@ -55,7 +55,7 @@ export async function register(
           email,
           lastName,
           firstName,
-          profPicUrl,
+          photoUrl: profPicUrl,
         };
         const dbRef = firebase.firestore().collection("users");
         dbRef
@@ -67,15 +67,6 @@ export async function register(
       });
 
     const user = firebase.auth().currentUser;
-
-    /*
-    const db = firebase.firestore();
-    db.collection("users").doc(currentUser.uid).set({
-      email: currentUser.email,
-      lastName: lastName,
-      firstName: firstName,
-    });
-    */
   } catch (error) {
     alert(error);
   }
@@ -103,7 +94,7 @@ export async function editUser(userId, firstName, lastName, profPicUrl) {
       id: userId,
       firstName: firstName,
       lastName: lastName,
-      profPicUrl: profPicUrl,
+      photoUrl: profPicUrl,
     };
     const dbRef = firebase.firestore().collection("users");
     await dbRef
@@ -146,6 +137,32 @@ export async function addField(fieldName, coordinates, area, cropType) {
     console.log(error);
   }
 }
+
+export async function addWorker(
+  //userId,
+  workerUID
+) {
+  try {
+    const data = {
+      id: workerUID,
+    };
+    const uid = firebase.auth().currentUser.uid;
+    const db = firebase.firestore();
+    const dbRef = db.collection("users").doc(uid).collection("workers").doc();
+    dbRef
+      .set(data)
+      .then(() => {
+        console.log("Document successfully written!");
+      })
+      .catch((error) => {
+        alert(error);
+      });
+  } catch (error) {
+    alert(error);
+    console.log(error);
+  }
+}
+
 export async function addTask(
   //userId,
   taskName,
@@ -247,20 +264,62 @@ export async function editTask(
     console.log(error);
   }
 }
-/* GET FIELDS, GET TASKS */
-export async function getTasks() {
-  const tasks = [];
+
+export async function getWorkers() {
+  const workers = [];
+  try {
+    const uid = firebase.auth().currentUser.uid;
+    const dbRef = firebase
+      .firestore()
+      .collection("users")
+      .doc(uid)
+      .collection("workers");
+    const snapshot = await dbRef.get();
+    snapshot.forEach((doc) => {
+      workers.push({ id: doc.id, ...doc.data() });
+    });
+  } catch (error) {
+    console.log("problem getting workers from db: " + error);
+  }
+  return workers;
+}
+
+export async function deleteWorker(workerId) {
   const uid = firebase.auth().currentUser.uid;
   const dbRef = firebase
     .firestore()
     .collection("users")
     .doc(uid)
-    .collection("tasks");
-  const snapshot = await dbRef.get();
-  snapshot.forEach((doc) => {
-    tasks.push({ id: doc.id, ...doc.data() });
-    //console.log(doc.id, "=>", doc.data());
-  });
+    .collection("workers");
+  dbRef
+    .doc(workerId)
+    .delete.then(() => {
+      console.log("Document successfully deleted!");
+    })
+    .catch((error) => {
+      console.error("Error removing document: ", error);
+    });
+}
+
+/* GET FIELDS, GET TASKS */
+export async function getTasks() {
+  const tasks = [];
+  try {
+    const uid = firebase.auth().currentUser.uid;
+    const dbRef = firebase
+      .firestore()
+      .collection("users")
+      .doc(uid)
+      .collection("tasks");
+    const snapshot = await dbRef.get();
+    snapshot.forEach((doc) => {
+      tasks.push({ id: doc.id, ...doc.data() });
+      //console.log("tasks from db: " + doc.id, "=>", doc.data());
+    });
+  } catch (error) {
+    console.log("error getting tasks from db: " + error);
+  }
+
   return tasks;
 }
 export async function getFields() {
@@ -274,7 +333,6 @@ export async function getFields() {
   const snapshot = await dbRef.get();
   snapshot.forEach((doc) => {
     fields.push({ id: doc.id, ...doc.data() });
-    //console.log(doc.id, "=>", doc.data());
   });
   return fields;
 }
@@ -288,7 +346,8 @@ export async function deleteTask(taskId) {
     .collection("tasks");
   dbRef
     .doc(taskId)
-    .delete.then(() => {
+    .delete()
+    .then(() => {
       console.log("Document successfully deleted!");
     })
     .catch((error) => {
@@ -305,7 +364,8 @@ export async function deleteField(fieldId) {
     .collection("fields");
   dbRef
     .doc(fieldId)
-    .delete.then(() => {
+    .delete()
+    .then(() => {
       console.log("Document successfully deleted!");
     })
     .catch((error) => {

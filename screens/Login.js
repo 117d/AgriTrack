@@ -1,20 +1,21 @@
 import React, { useState, Component } from "react";
 import {
-  Text,
-  TextInput,
   View,
   StyleSheet,
   TouchableOpacity,
-  Pressable,
   Image,
+  KeyboardAvoidingView,
+  TouchableWithoutFeedback,
 } from "react-native";
 import { useNavigation } from "@react-navigation/native";
 import { signIn } from "../firebase/fb.methods";
+import { Text, Button, Icon, Layout, Input } from "@ui-kitten/components";
 function Login({ navigation }) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [secureTextEntry, setSecureTextEntry] = useState(true);
   //const navigation = useNavigation();
-
+  const EmailIcon = (props) => <Icon name="email" {...props} />;
   const login = () => {
     if (!email) {
       alert("required");
@@ -29,108 +30,99 @@ function Login({ navigation }) {
     setEmail("");
     setPassword("");
   };
-  return (
-    <View style={styles.container}>
-      <Image style={styles.image} source={require("../assets/temp_logo.png")} />
 
-      {/*<TextInput placeholder={"Username"} style={styles.input} />*/}
-      <View style={styles.inputContainer}>
-        <TextInput
-          style={styles.input}
+  const renderInputIcon = (props) => (
+    <TouchableWithoutFeedback onPress={toggleSecureEntry}>
+      <Icon {...props} name={!secureTextEntry ? "eye" : "eye-off"} />
+    </TouchableWithoutFeedback>
+  );
+  const toggleSecureEntry = () => {
+    setSecureTextEntry(!secureTextEntry);
+  };
+
+  return (
+    <KeyboardAvoidingView style={styles.container}>
+      <View style={styles.headerContainer}>
+        <Image
+          style={styles.image}
+          source={require("../assets/temp_logo.png")}
+        />
+        <Text category="h1">Log in</Text>
+        <Text category="h6">Welcome back!</Text>
+      </View>
+      <Layout style={styles.formContainer} level="1">
+        <Input
           placeholder="Enter your email"
           value={email}
           onChangeText={(email) => setEmail(email)}
           keyboardType="email-address"
           autoCapitalize="none"
+          style={styles.emailInput}
+          accessoryRight={EmailIcon}
         />
-        <TextInput
-          style={styles.input}
-          placeholder="Enter your password"
+        <Input
+          style={styles.passwordInput}
+          placeholder="Enter password"
           value={password}
           onChangeText={(password) => setPassword(password)}
           autoCapitalize="none"
-          secureTextEntry={true}
+          secureTextEntry={secureTextEntry}
+          accessoryRight={renderInputIcon}
         />
-      </View>
-      <TouchableOpacity style={styles.inputBtn} onPress={login}>
-        <Text style={styles.text}>Login</Text>
-      </TouchableOpacity>
-      <View style={styles.bottomText}>
-        <Text style={styles.txt}>
-          Don't have account yet?
-          <Text> </Text>
-          <Text
-            onPress={() => navigation.navigate("Registration")}
-            style={styles.txtLink}
-          >
-            Sign up
-          </Text>
-        </Text>
-      </View>
-    </View>
+      </Layout>
+      <Layout style={styles.btnContainer}>
+        <Button style={styles.btn} onPress={login} size="medium">
+          Login
+        </Button>
+        <Button
+          style={styles.signInButton}
+          appearance="ghost"
+          status="basic"
+          onPress={() => navigation.navigate("Registration")}
+        >
+          Don't have an account yet? Sign up
+        </Button>
+      </Layout>
+    </KeyboardAvoidingView>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: "#ecf0f1",
+    backgroundColor: "white",
   },
   image: {
     width: "70%",
     aspectRatio: 1,
-    marginBottom: 80,
     //marginTop: 20,
   },
-  inputContainer: {
-    marginBottom: 5,
-    width: "80%",
-  },
-  input: {
-    width: "100%",
-    height: 50,
-    padding: 15,
-    borderWidth: 2,
-    borderRadius: 40,
-    borderColor: "black",
-    marginBottom: 20,
-  },
-  bottomText: {
-    margin: 10,
-    //justifyContent: "space-between",
-  },
-  inputBtn: {
-    width: "50%",
-    height: 50,
-    padding: 10,
-    borderWidth: 1,
-    borderRadius: 20,
-    backgroundColor: "black",
-    marginTop: 10,
-    alignItems: "center",
+  headerContainer: {
     justifyContent: "center",
-    marginBottom: 10,
+    alignItems: "center",
+    minHeight: 256,
+    marginTop: 25,
+    //backgroundColor: "white",
   },
   text: {
-    fontSize: 16,
-    lineHeight: 21,
-    fontWeight: "bold",
-    letterSpacing: 0.25,
-    color: "white",
+    marginBottom: 25,
   },
-  txtLink: {
-    color: "#788eec",
-    fontWeight: "bold",
-    fontSize: 16,
+  formContainer: {
+    flex: 1,
+    paddingTop: 32,
+    paddingHorizontal: 16,
   },
-  txt: {
-    fontSize: 16,
-    lineHeight: 21,
-    //fontWeight: "bold",
-    letterSpacing: 0.25,
-    color: "black",
+  emailInput: {
+    marginTop: 16,
+  },
+  passwordInput: {
+    marginTop: 16,
+  },
+  btnContainer: {
+    flex: 1,
+    //paddingTop: 32,
+
+    paddingHorizontal: 16,
   },
 });
 
