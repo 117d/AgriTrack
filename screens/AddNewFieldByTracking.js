@@ -14,6 +14,7 @@ import * as geolib from "geolib";
 import haversine from "haversine";
 import { addField } from "../firebase/fb.methods";
 import { Card, Input, Modal, Text } from "@ui-kitten/components";
+import * as TaskManager from "expo-task-manager";
 const { width, height } = Dimensions.get("window");
 const ASPECT_RATIO = width / height;
 const LATITUDE_DELTA = 0.0922;
@@ -34,14 +35,17 @@ const crops = [
   "Sunflower",
   "Other",
 ];
+
+const LOCATION_TASK_NAME = "background-location-task";
+
 export default function AddNewFieldByTracking({ navigation }) {
+  const [stoppedTtacking, setStoppedTracking] = useState(false);
   const [fieldName, setFieldName] = useState("");
   const [cropType, setCropType] = useState("");
   const [currLocation, setCurrLocation] = useState({
     latitude: null,
     longitude: null,
   });
-  const [plgnCoords, setPlgnCoords] = useState([]);
   const prevLocation = usePrevious(currLocation);
   const [modalVisible, setModalVisible] = useState(false);
   const [distance, setDistance] = useState(0);
@@ -54,6 +58,7 @@ export default function AddNewFieldByTracking({ navigation }) {
     hours: 0,
   });
   const [fieldCoords, setFieldCoords] = useState([]);
+
   const mapView = React.createRef();
   //dummy values
   const dummyCoords = [
@@ -61,7 +66,7 @@ export default function AddNewFieldByTracking({ navigation }) {
     { latitude: 52.23964963014553, longitude: 20.996877998113632 },
     { latitude: 52.23963115226643, longitude: 20.99720422178507 },
   ];
-  const plgnCoordinates = dummyCoords;
+  //const plgnCoordinates = dummyCoords;
   const saveField = () => {
     addField(fieldName, fieldCoords, plgnArea, cropType);
     console.log("Saved");
@@ -81,11 +86,46 @@ export default function AddNewFieldByTracking({ navigation }) {
     setModalVisible(!modalVisible);
   };
 
+  TaskManager.defineTask(LOCATION_TASK_NAME, ({ data, error }) => {
+    if (error) {
+      // Error occurred - check `error.message` for more details.
+      return;
+    }
+    if (data) {
+      const { locations } = data;
+      let currLocationData = {
+        latitude: data.locations[0].coords.latitude,
+        longitude: data.locations[0].coords.longitude,
+        time: data.locations[0].timestamp,
+      };
+      if (currLocation != currLocationData) {
+        setCurrLocation(currLocationData);
+        if (
+          startTracking &&
+          currLocation.latitude != null &&
+          currLocation.longitude != null
+        ) {
+          setPlgnCoords([
+            ...plgnCoords,
+            {
+              latitude: currLocation.latitude,
+              longitude: currLocation.longitude,
+            },
+          ]);
+        }
+        console.log("Polygon coordinates: " + JSON.stringify(plgnCoords));
+        console.log(
+          "curr loc data was logged: " + JSON.stringify(currLocationData)
+        );
+      }
+    }
+  });
+
   function usePrevious(value) {
     const ref = useRef();
     useEffect(() => {
       ref.current = value;
-    });
+    }, [value]);
     if (ref.current) {
       console.log(
         "REF.CURRENT.LAT: " +
@@ -96,25 +136,29 @@ export default function AddNewFieldByTracking({ navigation }) {
     }
     return ref.current;
   }
+  const requestPermissions = async () => {
+    const { status } = await Location.requestBackgroundPermissionsAsync();
+    if (status === "granted") {
+      await Location.startLocationUpdatesAsync(LOCATION_TASK_NAME, {
+        accuracy: Location.Accuracy.Highest,
+        //timeInterval: 10000,
+        distanceInterval: 3,
+      });
+    }
+  };
 
   const clickedTracking = () => {
-    setStartTracking(!startTracking);
-    console.log(JSON.stringify(currLocation));
-
-    console.log(typeof currLocation.latitude);
-    mapView.current.animateCamera(
-      {
-        center: {
-          latitude: 51.1597185,
-          longitude: 71.455235,
-        },
-        pitch: 45,
-        heading: 200,
-        altitude: 200,
-        zoom: 50,
-      },
-      { duration: 1000 }
+    setStartTracking(true);
+    console.log(
+      "Clicked tracking and the current location is: " +
+        JSON.stringify(currLocation)
     );
+  };
+
+  const clickedStop = () => {
+    setStoppedTracking(true);
+    setStartTracking(false);
+    console.log("Stopped tracking");
   };
 
   const pressedSave = () => {
@@ -124,53 +168,14 @@ export default function AddNewFieldByTracking({ navigation }) {
   };
   //** GET USER'S LOCATION **//
   useEffect(() => {
-    (async () => {
-      let { status } = await Location.requestForegroundPermissionsAsync();
-      if (status !== "granted") {
-        setErrorMsg("Permission to access location was denied");
-        return;
-      }
-      if (currLocation.latitude != null) {
-        let prevLocation = usePrevious(currLocation);
-        console.log("previous location" + prevLocation);
-      }
-      let location = await Location.getCurrentPositionAsync({
-        accuracy: Location.Accuracy.High,
-        timeInterval: 1000,
-      });
-      setCurrLocation({
-        latitude: location.coords.latitude,
-        longitude: location.coords.longitude,
-      });
-      if (prevLocation) {
-        setDistance(
-          distance + geolib.getDistance(prevLocation, currLocation, 10)
-        );
-        setFieldCoords(...fieldCoords, prevLocation);
-      }
-      if (startTracking) {
-        calcSpeed1 = prevLocation;
-        calcSpeed1.time = prevLocation.timestamp;
-        calcSpeed2 = currLocation;
-        calcSpeed2.time = currLocation.timestamp;
-        setSpeed(getSpeed(calcSpeed1, calcSpeed2));
-        console.log("Speed: " + speed);
-        mapView.current.animateCamera(
-          {
-            center: {
-              latitude: currLocation.latitude,
-              longitude: currLocation.longitude,
-            },
-            pitch: 90,
-            heading: 45,
-            altitude: 200,
-            zoom: 15,
-          },
-          1000
-        );
-      }
-    })();
-  }, []);
+    console.log("useEffect was called");
+    requestPermissions();
+    followCamera();
+    if (prevLocation) {
+      calculateSpeed();
+      calculateDistance();
+    }
+  }, [pathCoords]);
 
   return (
     <View style={styles.container}>
@@ -229,29 +234,32 @@ export default function AddNewFieldByTracking({ navigation }) {
           mapType="hybrid"
           showsUserLocation={true}
           showsMyLocationButton={true}
-          /*region={{
+          initialRegion={{
             latitude: currLocation.latitude,
             longitude: currLocation.longitude,
-            latitudeDelta: 0.0022,
-            longitudeDelta: 0.0021,
-          }}*/
+            latitudeDelta: 0.0001,
+            longitudeDelta: 0.0001,
+          }}
           zoomEnabled={true}
           followsUserLocation={true}
           showsCompass={true}
           //onPress={(e) => console.log(e.nativeEvent.coordinate)}
         >
-          {plgnCoordinates != null ? (
-            <MapView.Polygon
-              coordinates={fieldCoords}
-              fillColor="rgba(255, 0, 0, 0.5)"
-              strokeColor="red"
-            />
-          ) : null}
-          {clickedTracking ? (
+          {
+            (stoppedTtacking = false ? (
+              <MapView.Polygon
+                coordinates={fieldCoords}
+                fillColor="rgba(255, 0, 0, 0.5)"
+                strokeColor="red"
+              />
+            ) : null)
+          }
+          {startTracking && fieldCoords.length > 0 ? (
             <MapView.Polyline
               coordinates={fieldCoords}
-              strokeColor="rgba(255, 246, 84, 0.75)"
-              strokeWidth={3}
+              strokeColor="rgba(25, 181, 254, 0.75)"
+              strokeWidth={36}
+              geodesic={true}
             />
           ) : null}
         </MapView>

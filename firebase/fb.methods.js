@@ -240,13 +240,14 @@ export async function editTask(
   try {
     const data = {
       id: taskId,
-      taskName,
-      taskType,
-      taskStatus,
-      taskProgress,
-      dateCreated,
-      dateFinished,
+      taskName: taskName,
+      taskType: taskType,
+      taskStatus: taskStatus,
+      taskProgress: taskProgress,
+      dateCreated: dateCreated,
+      dateFinished: dateFinished,
     };
+    console.log("received data" + data);
     const uid = firebase.auth().currentUser.uid;
     const dbRef = firebase
       .firestore()
@@ -293,7 +294,8 @@ export async function deleteWorker(workerId) {
     .collection("workers");
   dbRef
     .doc(workerId)
-    .delete.then(() => {
+    .delete()
+    .then(() => {
       console.log("Document successfully deleted!");
     })
     .catch((error) => {
@@ -381,5 +383,8 @@ export async function getTask(taskId) {
     .doc(uid)
     .collection("tasks")
     .doc(taskId);
-  //dbRef.get().then((return doc.d))
+  dbRef.get().then(() => {
+    console.log("sending task data => " + JSON.stringify(doc.data()));
+    return doc.data();
+  });
 }

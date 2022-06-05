@@ -43,7 +43,7 @@ export default function TeamScreen({ navigation }) {
 
   async function fetchWorkers() {
     let workers = await getWorkers();
-    setTeamMembers(...teamMembers, workers);
+    setTeamMembers([...teamMembers, workers]);
   }
 
   async function handleDelete(id) {
@@ -51,12 +51,39 @@ export default function TeamScreen({ navigation }) {
     setReload(!reload);
   }
 
+  const renderAnotherItemAccessory = (props) => {
+    return (
+      <View
+        style={{
+          margin: "auto",
+          flexDirection: "row",
+          justifyContent: "space-evenly",
+        }}
+      >
+        <Button
+          status={"success"}
+          accessoryLeft={ViewIcon}
+          size={"small"}
+        ></Button>
+        <Button
+          status={"warning"}
+          onPress={() => handleDelete(props.id)}
+          accessoryLeft={DeleteIcon}
+          size={"small"}
+        ></Button>
+      </View>
+    );
+  };
+
   const renderItemAccessory = (props) => (
-    <Button size="tiny" onPress={(props) => handleDelete(props)}>
+    <Button size="tiny" onPress={() => handleDelete(props)}>
       REMOVE
     </Button>
   );
 
+  const ViewIcon = (props) => <Icon {...props} name="eye" />;
+  const EditIcon = (props) => <Icon {...props} name="edit" />;
+  const DeleteIcon = (props) => <Icon {...props} name="person-delete" />;
   const renderItemIcon = (props) => <Icon {...props} name="person" />;
 
   const renderItem = ({ item, index }) => (
@@ -64,7 +91,7 @@ export default function TeamScreen({ navigation }) {
       title={`${index + 1} ${item.firstName} ${item.lastName}`}
       description={`${item.email}`}
       accessoryLeft={renderItemIcon}
-      accessoryRight={renderItemAccessory(item.id)}
+      accessoryRight={() => renderAnotherItemAccessory(item.id)}
     />
   );
 
@@ -175,31 +202,24 @@ const styles = StyleSheet.create({
   },
   listContainer: {
     maxHeight: 200,
-    //maxWidth: "100%",
     alignItems: "center",
     justifyContent: "center",
-    //borderRadius: 30,
   },
   listList: {
     flex: 1,
     padding: 10,
     width: 400,
-    //height: 120,
   },
   profileTop: {
-    //backgroundColor: "#B8D1A9",
     backgroundColor: "#3366FF",
     width: width,
     height: "40%",
     marginBottom: 80,
     justifyContent: "center",
     alignItems: "center",
-    //marginTop: "20%",
-    //marginBottom: 20,
   },
   logOutBtn: {
     width: "80%",
-    //height: 50,
     padding: 10,
     borderWidth: 1,
     borderRadius: 20,

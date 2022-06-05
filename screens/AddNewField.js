@@ -49,7 +49,7 @@ const crops = [
   "Sunflower",
   "Other",
 ];
-export default function AddNewField({ navigation, updated }) {
+export default function AddNewField(props) {
   const [selectedIndex, setSelectedIndex] = useState(new IndexPath(0));
   const [fieldName, setFieldName] = useState("");
   const [cropType, setCropType] = useState("");
@@ -67,7 +67,7 @@ export default function AddNewField({ navigation, updated }) {
     addField(fieldName, plgnCoords, plgnArea, cropType);
     console.log("Saved");
     setModalVisible(!modalVisible);
-    updated();
+    props.updated();
     navigation.navigate("Dashboard");
   };
   const cancelSave = () => {
@@ -105,6 +105,10 @@ export default function AddNewField({ navigation, updated }) {
       <Spinner size="giant" />
     </View>
   );
+  const handleCropTypeSelection = (index) => {
+    setSelectedIndex(index);
+    setCropType(cropType[selectedIndex.row]);
+  };
 
   const pressedSave = () => {
     setModalVisible(true);
@@ -154,7 +158,7 @@ export default function AddNewField({ navigation, updated }) {
             value={cropType[selectedIndex.row]}
             selectedIndex={selectedIndex}
             prompt="Choose Type..."
-            onSelect={(index) => setSelectedIndex(index)}
+            onSelect={(index) => handleCropTypeSelection(index)}
           >
             {crops.map((crop, index) => (
               <SelectItem title={crop} value={crop} key={index} />

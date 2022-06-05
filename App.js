@@ -130,6 +130,8 @@ export default function App() {
                       {...props}
                       fields={userFields}
                       tasks={userTasks}
+                      updated={getTasks}
+                      updated2={getFields}
                     />
                   )}
                 </Stack.Screen>

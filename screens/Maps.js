@@ -25,25 +25,32 @@ const LOCATION_TASK_NAME = "background-location-task";
 export default function Map({ navigation, route }) {
   const [field, setField] = useState(route.params.field);
   const [task, setTask] = useState(route.params.task);
+  const [elapsedTime, setElapsedTime] = useState(0);
   const [currLocation, setCurrLocation] = useState({
     latitude: null,
     longitude: null,
     time: null,
   });
+  const [startTime, setStartTime] = useState(0);
   const prevLocation = usePrevious(currLocation);
   const [modalVisible, setModalVisible] = useState(false);
   const [distance, setDistance] = useState(0);
   const [startTracking, setStartTracking] = useState(false);
   const [speed, setSpeed] = useState(0);
-  const [area, setArea] = useState(0);
-  const [time, setTime] = useState({
-    seconds: 30,
-    minutes: 1,
-    hours: 0,
-  });
-
-  const [pathCoords, setPathCoords] = useState([]);
-
+  const [area, setArea] = useState(field.area);
+  const [time, setTime] = useState(
+    task.taskProgress
+      ? task.taskProgress.time
+      : {
+          seconds: 0,
+          minutes: 0,
+          hours: 0,
+        }
+  );
+  const [pathCoords, setPathCoords] = useState(
+    task.taskProgress ? task.taskProgress.travelledPath : []
+  );
+  const [showUserLocation, setShowUserLocation] = useState(true);
   const mapView = React.createRef();
 
   TaskManager.defineTask(LOCATION_TASK_NAME, ({ data, error }) => {
@@ -53,7 +60,6 @@ export default function Map({ navigation, route }) {
     }
     if (data) {
       const { locations } = data;
-      //console.log("data gotten: " + JSON.stringify(data));
       let currLocationData = {
         latitude: data.locations[0].coords.latitude,
         longitude: data.locations[0].coords.longitude,
@@ -66,6 +72,7 @@ export default function Map({ navigation, route }) {
           currLocation.latitude != null &&
           currLocation.longitude != null
         ) {
+          calculateTime();
           setPathCoords([
             ...pathCoords,
             {
@@ -78,9 +85,8 @@ export default function Map({ navigation, route }) {
         console.log(
           "curr loc data was logged: " + JSON.stringify(currLocationData)
         );
+        //console.log("seconds: " + currLocationData.time / 1 000 000);
       }
-      // console.log("current location is =>  " + JSON.stringify(currLocation));
-      // do something with the locations captured in the background
     }
   });
 
@@ -99,7 +105,7 @@ export default function Map({ navigation, route }) {
       time: time,
     };
     let progressChange = "IN PROGRESS";
-    const dateFinished = null;
+    let dateFinished = null;
     let today = new Date();
     let date =
       today.getDate() +
@@ -107,17 +113,17 @@ export default function Map({ navigation, route }) {
       (today.getMonth() + 1) +
       "." +
       today.getFullYear();
-    area == field.area
-      ? ((progressChange = "DONE"), (dateFinished = date))
-      : (progressChange = "IN PROGRESS");
+    // area == field.area
+    //   ? ((progressChange = "DONE"), (dateFinished = date))
+    //   : (progressChange = "IN PROGRESS");
     editTask(
       task.id,
-      null,
-      null,
+      task.taskName,
+      task.taskType,
       progressChange,
       progressData,
       task.dateCreated,
-      dateFinished
+      dateFinished ? dateFinished : null
     );
     console.log("Saved");
     setModalVisible(!modalVisible);
@@ -152,6 +158,8 @@ export default function Map({ navigation, route }) {
 
   const clickedTracking = () => {
     setStartTracking(true);
+    setShowUserLocation(false);
+    setStartTime(new Date() * 1);
     console.log(
       "Clicked tracking and the current location is: " +
         JSON.stringify(currLocation)
@@ -160,14 +168,15 @@ export default function Map({ navigation, route }) {
 
   const followCamera = () => {
     if (startTracking) {
+      console.log("follow camera called");
       mapView.current.animateCamera(
         {
           center: {
             latitude: currLocation.latitude,
             longitude: currLocation.longitude,
           },
-          pitch: 75,
-          heading: 360,
+          pitch: 65,
+          heading: 180,
           altitude: 100,
           zoom: 80,
         },
@@ -199,6 +208,17 @@ export default function Map({ navigation, route }) {
       setSpeed(geolib.getSpeed(calcSpeed1, calcSpeed2));
       console.log("Speed: " + geolib.getSpeed(calcSpeed1, calcSpeed2));
     }
+  };
+
+  const calculateTime = () => {
+    let newTime = new Date() * 1;
+    let elapsedTime = ((newTime - startTime) / 1000).toFixed(0);
+
+    setTime({
+      hours: (elapsedTime / 3600).toFixed(0) % 24,
+      minutes: (elapsedTime / 60).toFixed(0) % 60,
+      seconds: elapsedTime % 60,
+    });
   };
 
   const requestPermissions = async () => {
@@ -264,7 +284,7 @@ export default function Map({ navigation, route }) {
             latitudeDelta: 0.0001,
             longitudeDelta: 0.0001,
           }}
-          followsUserLocation={true}
+          followsUserLocation={showUserLocation}
           showsCompass={true}
           loadingEnabled={true}
           provider={"google"}
@@ -297,7 +317,7 @@ export default function Map({ navigation, route }) {
       ) : null}
       <View style={styles.navBar}>
         <Text style={styles.navBarText}>
-          Speed: {speed} km/h | Area: {field.area} Ha | Time:{" "}
+          Speed: {speed} km/h | Area: {area} Ha | Time:{" "}
           {time.hours < 10 ? "0" + time.hours : time.hours}:
           {time.minutes < 10 ? "0" + time.minutes : time.minutes}:
           {time.seconds < 10 ? "0" + time.seconds : time.seconds}
@@ -310,7 +330,10 @@ export default function Map({ navigation, route }) {
         </View>
       </View>
       {!startTracking ? (
-        <TouchableOpacity style={styles.addButton} onPress={clickedTracking}>
+        <TouchableOpacity
+          style={styles.addButton}
+          onPress={() => clickedTracking()}
+        >
           <Image
             style={styles.image}
             source={require("../assets/start_icon.png")}
@@ -486,3 +509,12 @@ camera={{
             zoom: 30,
           }}
           */
+/**
+ * time presentation if have separate time values on each: 
+ *  <Text style={styles.navBarText}>
+          Speed: {speed} km/h | Area: {area} Ha | Time:{" "}
+          {time.hours < 10 ? "0" + time.hours : time.hours}:
+          {time.minutes < 10 ? "0" + time.minutes : time.minutes}:
+          {time.seconds < 10 ? "0" + time.seconds : time.seconds}
+        </Text>
+ */

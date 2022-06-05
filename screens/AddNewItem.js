@@ -41,6 +41,12 @@ export default function AddNewItem({ navigation }) {
     navigation.navigate("Dashboard");
     emptyState();
   };
+
+  const handleTaskTypeSelection = (index) => {
+    setSelectedIndex(index);
+    setTaskType(taskTypes[selectedIndex.row].taskName);
+    console.log("selected task type" + taskType);
+  };
   return (
     <View style={styles.container}>
       <StatusBar style="auto" />
@@ -60,7 +66,7 @@ export default function AddNewItem({ navigation }) {
             mode="dropdown"
             selectedIndex={selectedIndex}
             prompt="Choose Task..."
-            onSelect={(index) => setSelectedIndex(index)}
+            onSelect={(index) => handleTaskTypeSelection(index)}
           >
             {taskTypes.map((type) => (
               <SelectItem
