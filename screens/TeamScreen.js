@@ -5,7 +5,6 @@ import {
   TouchableOpacity,
   Image,
   Dimensions,
-  Modal,
   StatusBar,
   KeyboardAvoidingView,
 } from "react-native";
@@ -27,36 +26,47 @@ import {
   Divider,
   Input,
   Card,
+  Modal,
 } from "@ui-kitten/components";
 
 import firebase from "firebase/compat/app";
 import { getAuth } from "firebase/auth";
 const { width, height } = Dimensions.get("window");
 
-export default function TeamScreen({ navigation }) {
+export default function TeamScreen(props) {
+  const { navigation } = props;
   let currUser = firebase.auth().currentUser;
-  const [teamMembers, setTeamMembers] = useState([]);
+  const [teamMembers, setTeamMembers] = useState(props.workers);
   const [avatar, setAvatar] = useState(null);
   const [userEmail, setUserEmail] = useState("");
   const [firstName, setFirstName] = useState(null);
-  const [reload, setReload] = useState(false);
+  const [modalVisible, setModalVisible] = useState(false);
+  const [workerToDelete, setWorkerToDelete] = useState(null);
 
-  async function fetchWorkers() {
-    let workers = await getWorkers();
-    setTeamMembers(...teamMembers, workers);
-  }
+  const handleDelete = (worker) => {
+    setWorkerToDelete(worker);
+    setModalVisible(true);
+    console.log(workerToDelete + " worker to delete");
+  };
 
-  async function handleDelete(id) {
-    await deleteWorker(id);
-    setReload(!reload);
-  }
+  const removeWorker = () => {
+    deleteWorker(workerToDelete.id);
+    props.updated3();
+    setModalVisible(false);
+  };
 
   const renderItemAccessory = (props) => (
-    <Button size="tiny" onPress={(props) => handleDelete(props)}>
-      REMOVE
-    </Button>
+    <Button
+      size="tiny"
+      status={"danger"}
+      onPress={() => handleDelete(props)}
+      accessoryLeft={DeleteIcon}
+    ></Button>
   );
 
+  const ViewIcon = (props) => <Icon {...props} name="eye" />;
+  const EditIcon = (props) => <Icon {...props} name="edit" />;
+  const DeleteIcon = (props) => <Icon {...props} name="person-delete" />;
   const renderItemIcon = (props) => <Icon {...props} name="person" />;
 
   const renderItem = ({ item, index }) => (
@@ -64,7 +74,7 @@ export default function TeamScreen({ navigation }) {
       title={`${index + 1} ${item.firstName} ${item.lastName}`}
       description={`${item.email}`}
       accessoryLeft={renderItemIcon}
-      accessoryRight={renderItemAccessory(item.id)}
+      accessoryRight={renderItemAccessory(item)}
     />
   );
 
@@ -79,22 +89,17 @@ export default function TeamScreen({ navigation }) {
 
       if (!doc.exists) {
         //alert("Not found!");
-        setFirstName("Admin");
-        //navigation.navigate("Home");
+        navigation.navigate("Home");
       } else {
         let dataObj = doc.data();
         setFirstName(dataObj.firstName);
-
-        setFirstName(dataObj.firstName);
         setAvatar(dataObj.photoUrl);
         console.log("photo uri of the current user is: " + avatar);
-        // console.log(await getTasks());
       }
     }
     getUserInfo();
-    //console.log(dataObj.firstName);
-    fetchWorkers();
-  }, [reload]);
+    props.updated3();
+  }, [teamMembers]);
 
   async function addUserToTeam() {
     var collectionRef = firebase.firestore().collection("users");
@@ -117,7 +122,7 @@ export default function TeamScreen({ navigation }) {
         .set(data)
         .then(() => {
           console.log("Document successfully written!");
-          setReload(true);
+          props.updated3();
         })
         .catch((error) => {
           console.log("error adding new worker: " + error);
@@ -127,9 +132,26 @@ export default function TeamScreen({ navigation }) {
 
   return (
     <View style={styles.container}>
+      <Modal
+        visible={modalVisible}
+        backdropStyle={styles.backdrop}
+        onRequestClose={() => {
+          setModalVisible(!modalVisible);
+        }}
+      >
+        <Card>
+          <Text style={styles.modalTitle}>Confirm delete</Text>
+          <Button status={"danger"} onPress={() => removeWorker()}>
+            Ok
+          </Button>
+          <Button status={"info"} onPress={() => setModalVisible(false)}>
+            Cancel
+          </Button>
+        </Card>
+      </Modal>
       <View style={styles.profileTop}>
         <View style={styles.imageContainer}>
-          {currUser.photoURL != null ? (
+          {avatar != null ? (
             <Image style={styles.image} source={{ uri: avatar }} />
           ) : (
             <Image
@@ -155,13 +177,19 @@ export default function TeamScreen({ navigation }) {
         />
         <Button onPress={addUserToTeam}>Add</Button>
       </Layout>
-      <Layout style={styles.listContainer}>
-        <List
-          style={styles.listList}
-          data={teamMembers}
-          renderItem={renderItem}
-        />
-      </Layout>
+      {props.workers ? (
+        <Layout style={styles.listContainer}>
+          <List
+            style={styles.listList}
+            data={props.workers}
+            renderItem={renderItem}
+          />
+        </Layout>
+      ) : (
+        <View style={styles.container}>
+          <Text category={"h4"}>No team to display</Text>
+        </View>
+      )}
     </View>
   );
 }
@@ -175,31 +203,25 @@ const styles = StyleSheet.create({
   },
   listContainer: {
     maxHeight: 200,
-    //maxWidth: "100%",
     alignItems: "center",
     justifyContent: "center",
-    //borderRadius: 30,
   },
   listList: {
     flex: 1,
     padding: 10,
     width: 400,
-    //height: 120,
+    marginBottom: 20,
   },
   profileTop: {
-    //backgroundColor: "#B8D1A9",
     backgroundColor: "#3366FF",
     width: width,
     height: "40%",
     marginBottom: 80,
     justifyContent: "center",
     alignItems: "center",
-    //marginTop: "20%",
-    //marginBottom: 20,
   },
   logOutBtn: {
     width: "80%",
-    //height: 50,
     padding: 10,
     borderWidth: 1,
     borderRadius: 20,
@@ -233,6 +255,24 @@ const styles = StyleSheet.create({
     height: "100%",
     //paddingBottom: 10,
     //marginTop: 20,
+  },
+  modal: {
+    width: "40%%",
+    height: 150,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingTop: 10,
+    borderRadius: 300,
+  },
+  backdrop: { backgroundColor: "rgba(0, 0, 0, 0.5)" },
+  modalTitle: {
+    marginBottom: 20,
+    fontSize: 24,
+    alignSelf: "center",
+    backgroundColor: "#3366FF",
+    width: "100%",
+    textAlign: "center",
+    color: "white",
   },
   textTitle: {
     fontSize: 30,
@@ -275,7 +315,7 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
     letterSpacing: 0.25,
     color: "white",
-    marginTop: 15,
+    marginTop: 10,
   },
   buttonText: {
     fontSize: 16,

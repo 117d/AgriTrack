@@ -25,27 +25,39 @@ const LOCATION_TASK_NAME = "background-location-task";
 export default function Map({ navigation, route }) {
   const [field, setField] = useState(route.params.field);
   const [task, setTask] = useState(route.params.task);
+  const [elapsedTime, setElapsedTime] = useState(0);
   const [currLocation, setCurrLocation] = useState({
     latitude: null,
     longitude: null,
     time: null,
   });
+  const [startTime, setStartTime] = useState(0);
   const prevLocation = usePrevious(currLocation);
   const [modalVisible, setModalVisible] = useState(false);
   const [distance, setDistance] = useState(0);
   const [startTracking, setStartTracking] = useState(false);
   const [speed, setSpeed] = useState(0);
-  const [area, setArea] = useState(0);
-  const [time, setTime] = useState({
-    seconds: 30,
-    minutes: 1,
-    hours: 0,
+  const [area, setArea] = useState(field.area);
+  const [startCoordinate, setStartCoordinate] = useState({
+    latitude: null,
+    longitude: null,
+    time: null,
   });
-
-  const [pathCoords, setPathCoords] = useState([]);
-
+  const [time, setTime] = useState(
+    task.taskProgress
+      ? task.taskProgress.time
+      : {
+          seconds: 0,
+          minutes: 0,
+          hours: 0,
+        }
+  );
+  const [pathCoords, setPathCoords] = useState(
+    task.taskProgress ? task.taskProgress.travelledPath : []
+  );
+  const [showUserLocation, setShowUserLocation] = useState(true);
   const mapView = React.createRef();
-
+  console.log(startTracking);
   TaskManager.defineTask(LOCATION_TASK_NAME, ({ data, error }) => {
     if (error) {
       // Error occurred - check `error.message` for more details.
@@ -53,7 +65,6 @@ export default function Map({ navigation, route }) {
     }
     if (data) {
       const { locations } = data;
-      //console.log("data gotten: " + JSON.stringify(data));
       let currLocationData = {
         latitude: data.locations[0].coords.latitude,
         longitude: data.locations[0].coords.longitude,
@@ -66,6 +77,7 @@ export default function Map({ navigation, route }) {
           currLocation.latitude != null &&
           currLocation.longitude != null
         ) {
+          calculateTime();
           setPathCoords([
             ...pathCoords,
             {
@@ -78,9 +90,8 @@ export default function Map({ navigation, route }) {
         console.log(
           "curr loc data was logged: " + JSON.stringify(currLocationData)
         );
+        //console.log("seconds: " + currLocationData.time / 1 000 000);
       }
-      // console.log("current location is =>  " + JSON.stringify(currLocation));
-      // do something with the locations captured in the background
     }
   });
 
@@ -99,7 +110,7 @@ export default function Map({ navigation, route }) {
       time: time,
     };
     let progressChange = "IN PROGRESS";
-    const dateFinished = null;
+    let dateFinished = null;
     let today = new Date();
     let date =
       today.getDate() +
@@ -107,17 +118,17 @@ export default function Map({ navigation, route }) {
       (today.getMonth() + 1) +
       "." +
       today.getFullYear();
-    area == field.area
-      ? ((progressChange = "DONE"), (dateFinished = date))
-      : (progressChange = "IN PROGRESS");
+    // area == field.area
+    //   ? ((progressChange = "DONE"), (dateFinished = date))
+    //   : (progressChange = "IN PROGRESS");
     editTask(
       task.id,
-      null,
-      null,
+      task.taskName,
+      task.taskType,
       progressChange,
       progressData,
       task.dateCreated,
-      dateFinished
+      dateFinished ? dateFinished : null
     );
     console.log("Saved");
     setModalVisible(!modalVisible);
@@ -126,10 +137,12 @@ export default function Map({ navigation, route }) {
 
   const resumeSession = () => {
     setModalVisible(!modalVisible);
+    setStartTracking(true);
   };
 
   const deleteSession = () => {
     emptyState();
+    setStartTracking(false);
     setModalVisible(!modalVisible);
   };
 
@@ -152,6 +165,14 @@ export default function Map({ navigation, route }) {
 
   const clickedTracking = () => {
     setStartTracking(true);
+    setStartCoordinate({
+      latitude: currLocation.latitude,
+      longitude: currLocation.longitude,
+      time: currLocation.time,
+    });
+    followCamera();
+    setShowUserLocation(false);
+    setStartTime(new Date() * 1);
     console.log(
       "Clicked tracking and the current location is: " +
         JSON.stringify(currLocation)
@@ -160,14 +181,15 @@ export default function Map({ navigation, route }) {
 
   const followCamera = () => {
     if (startTracking) {
+      console.log("follow camera called");
       mapView.current.animateCamera(
         {
           center: {
             latitude: currLocation.latitude,
             longitude: currLocation.longitude,
           },
-          pitch: 75,
-          heading: 360,
+          pitch: 65,
+          heading: 180,
           altitude: 100,
           zoom: 80,
         },
@@ -180,34 +202,52 @@ export default function Map({ navigation, route }) {
   const calculateDistance = () => {
     if (startTracking) {
       let distanceCalc = geolib.getDistance(
-        { latitude: prevLocation.latitude, longitude: prevLocation.longitude },
+        {
+          latitude: startCoordinate.latitude,
+          longitude: startCoordinate.longitude,
+        },
         { latitude: currLocation.latitude, longitude: currLocation.longitude },
-        100
+        75
       );
       console.log("calculated distance => " + distanceCalc);
-      setDistance(distance + distanceCalc);
+      setDistance(geolib.convertDistance(distance + distanceCalc, "km"));
     }
   };
 
   const calculateSpeed = () => {
     if (startTracking) {
       let calcSpeed1 = prevLocation;
-      //console.log("calcSpeed 1 object is: " + JSON.stringify(calcSpeed1));
       calcSpeed1.time = prevLocation.time;
       let calcSpeed2 = currLocation;
       calcSpeed2.time = currLocation.time;
-      setSpeed(geolib.getSpeed(calcSpeed1, calcSpeed2));
-      console.log("Speed: " + geolib.getSpeed(calcSpeed1, calcSpeed2));
+      setSpeed(geolib.getSpeed(startCoordinate, calcSpeed2));
+      console.log("Speed: " + geolib.getSpeed(startCoordinate, calcSpeed2));
     }
+  };
+
+  const handleMenuSelection = () => {
+    setStartTracking(false);
+    setModalVisible(true);
+  };
+
+  const calculateTime = () => {
+    let newTime = new Date() * 1;
+    let elapsedTime = ((newTime - startTime) / 1000).toFixed(0);
+
+    setTime({
+      hours: (elapsedTime / 3600).toFixed(0) % 24,
+      minutes: (elapsedTime / 60).toFixed(0) % 60,
+      seconds: elapsedTime % 60,
+    });
   };
 
   const requestPermissions = async () => {
     const { status } = await Location.requestBackgroundPermissionsAsync();
     if (status === "granted") {
       await Location.startLocationUpdatesAsync(LOCATION_TASK_NAME, {
-        accuracy: Location.Accuracy.Highest,
+        accuracy: Location.Accuracy.BestForNavigation,
         //timeInterval: 10000,
-        distanceInterval: 3,
+        distanceInterval: 1,
       });
     }
   };
@@ -215,7 +255,9 @@ export default function Map({ navigation, route }) {
   useEffect(() => {
     console.log("useEffect was called");
     requestPermissions();
-    followCamera();
+    if (startTracking) {
+      followCamera();
+    }
     if (prevLocation) {
       calculateSpeed();
       calculateDistance();
@@ -264,11 +306,10 @@ export default function Map({ navigation, route }) {
             latitudeDelta: 0.0001,
             longitudeDelta: 0.0001,
           }}
-          followsUserLocation={true}
+          followsUserLocation={showUserLocation}
           showsCompass={true}
           loadingEnabled={true}
           provider={"google"}
-          //onPress={(e) => console.log(e.nativeEvent.coordinate)}
         >
           {field.coordinates != null ? (
             <MapView.Polygon
@@ -297,7 +338,7 @@ export default function Map({ navigation, route }) {
       ) : null}
       <View style={styles.navBar}>
         <Text style={styles.navBarText}>
-          Speed: {speed} km/h | Area: {field.area} Ha | Time:{" "}
+          Speed: {speed.toFixed(2)} km/h | Area: {area} Ha | Time:{" "}
           {time.hours < 10 ? "0" + time.hours : time.hours}:
           {time.minutes < 10 ? "0" + time.minutes : time.minutes}:
           {time.seconds < 10 ? "0" + time.seconds : time.seconds}
@@ -306,7 +347,7 @@ export default function Map({ navigation, route }) {
       <View style={styles.bottomBar}>
         <View style={styles.bottomBarGroup}>
           <Text style={styles.bottomBarHeader}>DISTANCE</Text>
-          <Text style={styles.bottomBarContent}>{distance} km</Text>
+          <Text style={styles.bottomBarContent}>{distance.toFixed(2)} km</Text>
         </View>
       </View>
       {!startTracking ? (
@@ -319,7 +360,7 @@ export default function Map({ navigation, route }) {
       ) : (
         <TouchableOpacity
           style={styles.addButton}
-          onPress={() => setModalVisible(true)}
+          onPress={() => handleMenuSelection()}
         >
           <Image
             style={styles.image}
@@ -340,9 +381,7 @@ const styles = StyleSheet.create({
   },
   navBar: {
     backgroundColor: "rgba(0,0,0,0.7)",
-    //height: 64,
     height: 80,
-    //width: width,
     position: "absolute",
     top: 0,
     bottom: 0,
@@ -357,11 +396,9 @@ const styles = StyleSheet.create({
     paddingTop: 30,
   },
   map: {
-    //flex: 1,
     width: "100%",
     height: "100%",
     paddingTop: 81,
-    //marginTop: 64,
   },
   bottomBar: {
     position: "absolute",
@@ -392,7 +429,6 @@ const styles = StyleSheet.create({
   addButton: {
     flex: 1,
     flexDirection: "row",
-    //flexWrap: "wrap",
     position: "absolute",
     bottom: 10,
     alignSelf: "center",
@@ -444,7 +480,7 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
   },
   modal: {
-    width: "80%",
+    width: "90%",
     height: "15%",
     alignItems: "center",
     justifyContent: "center",
@@ -453,6 +489,7 @@ const styles = StyleSheet.create({
     left: width / 9,
     backgroundColor: "rgba(0,0,0,0.7)",
     paddingTop: 10,
+    alignSelf: "center",
   },
   inputBtn: {
     width: "30%",
@@ -473,16 +510,3 @@ const styles = StyleSheet.create({
     color: "black",
   },
 });
-
-/*
-camera={{
-            center: {
-              latitude: currLocation.latitude,
-              longitude: currLocation.longitude,
-            },
-            pitch: 90,
-            heading: 45,
-            altitude: 200,
-            zoom: 30,
-          }}
-          */

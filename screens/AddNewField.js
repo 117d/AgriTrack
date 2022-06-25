@@ -49,7 +49,8 @@ const crops = [
   "Sunflower",
   "Other",
 ];
-export default function AddNewField({ navigation, updated }) {
+export default function AddNewField(props) {
+  const { navigation } = props;
   const [selectedIndex, setSelectedIndex] = useState(new IndexPath(0));
   const [fieldName, setFieldName] = useState("");
   const [cropType, setCropType] = useState("");
@@ -67,7 +68,7 @@ export default function AddNewField({ navigation, updated }) {
     addField(fieldName, plgnCoords, plgnArea, cropType);
     console.log("Saved");
     setModalVisible(!modalVisible);
-    updated();
+    props.updated();
     navigation.navigate("Dashboard");
   };
   const cancelSave = () => {
@@ -105,6 +106,10 @@ export default function AddNewField({ navigation, updated }) {
       <Spinner size="giant" />
     </View>
   );
+  const handleCropTypeSelection = (index) => {
+    setSelectedIndex(index);
+    setCropType(crops[selectedIndex.row]);
+  };
 
   const pressedSave = () => {
     setModalVisible(true);
@@ -151,10 +156,10 @@ export default function AddNewField({ navigation, updated }) {
           <Select
             style={styles.pickerStyle}
             mode="dropdown"
-            value={cropType[selectedIndex.row]}
+            value={crops[selectedIndex.row]}
             selectedIndex={selectedIndex}
             prompt="Choose Type..."
-            onSelect={(index) => setSelectedIndex(index)}
+            onSelect={(index) => handleCropTypeSelection(index)}
           >
             {crops.map((crop, index) => (
               <SelectItem title={crop} value={crop} key={index} />
@@ -188,7 +193,6 @@ export default function AddNewField({ navigation, updated }) {
           }}
           zoomEnabled={true}
           followsUserLocation={true}
-          //onPress={(e) => console.log(e.nativeEvent.coordinate)}
           onPress={(e) => onMapClick(e)}
         >
           {markers.map((marker, i) => (
@@ -204,11 +208,7 @@ export default function AddNewField({ navigation, updated }) {
         </MapView>
       ) : null}
       {mapClicked ? (
-        <TouchableOpacity
-          //appearance="outline"
-          onPress={pressedSave}
-          style={styles.addButton}
-        >
+        <TouchableOpacity onPress={pressedSave} style={styles.addButton}>
           <Image
             style={styles.image}
             source={require("../assets/save_icon.png")}
@@ -231,7 +231,6 @@ const styles = StyleSheet.create({
   navBar: {
     backgroundColor: "rgba(0,0,0,0.7)",
     height: 64,
-    //width: width,
     position: "absolute",
     top: 0,
     bottom: 0,
@@ -246,7 +245,6 @@ const styles = StyleSheet.create({
     paddingTop: 30,
   },
   map: {
-    //flex: 0.7,
     width: "100%",
     height: "100%",
   },
@@ -279,7 +277,6 @@ const styles = StyleSheet.create({
   addButton: {
     flex: 1,
     flexDirection: "row",
-    //flexWrap: "wrap",
     position: "absolute",
     bottom: 10,
     alignSelf: "center",
