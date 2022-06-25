@@ -14,7 +14,6 @@ function Login({ navigation }) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [secureTextEntry, setSecureTextEntry] = useState(true);
-  //const navigation = useNavigation();
   const EmailIcon = (props) => <Icon name="email" {...props} />;
   const login = () => {
     if (!email) {
@@ -95,14 +94,12 @@ const styles = StyleSheet.create({
   image: {
     width: "70%",
     aspectRatio: 1,
-    //marginTop: 20,
   },
   headerContainer: {
     justifyContent: "center",
     alignItems: "center",
     minHeight: 256,
     marginTop: 25,
-    //backgroundColor: "white",
   },
   text: {
     marginBottom: 25,
@@ -120,8 +117,6 @@ const styles = StyleSheet.create({
   },
   btnContainer: {
     flex: 1,
-    //paddingTop: 32,
-
     paddingHorizontal: 16,
   },
 });

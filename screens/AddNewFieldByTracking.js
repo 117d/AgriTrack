@@ -60,13 +60,6 @@ export default function AddNewFieldByTracking({ navigation }) {
   const [fieldCoords, setFieldCoords] = useState([]);
 
   const mapView = React.createRef();
-  //dummy values
-  const dummyCoords = [
-    { latitude: 52.23982496430413, longitude: 20.996974892914295 },
-    { latitude: 52.23964963014553, longitude: 20.996877998113632 },
-    { latitude: 52.23963115226643, longitude: 20.99720422178507 },
-  ];
-  //const plgnCoordinates = dummyCoords;
   const saveField = () => {
     addField(fieldName, fieldCoords, plgnArea, cropType);
     console.log("Saved");
@@ -243,7 +236,6 @@ export default function AddNewFieldByTracking({ navigation }) {
           zoomEnabled={true}
           followsUserLocation={true}
           showsCompass={true}
-          //onPress={(e) => console.log(e.nativeEvent.coordinate)}
         >
           {
             (stoppedTtacking = false ? (
@@ -306,11 +298,8 @@ const styles = StyleSheet.create({
   },
   navBar: {
     backgroundColor: "rgba(0,0,0,0.7)",
-    //height: 64,
     height: 80,
-    //width: width,
     position: "absolute",
-    //top: 0,
     top: 0,
     bottom: 0,
     left: 0,
@@ -324,11 +313,9 @@ const styles = StyleSheet.create({
     paddingTop: 30,
   },
   map: {
-    //flex: 1,
     width: "100%",
     height: "100%",
     paddingTop: 81,
-    //marginTop: 64,
   },
   bottomBar: {
     position: "absolute",
@@ -359,11 +346,9 @@ const styles = StyleSheet.create({
   addButton: {
     flex: 1,
     flexDirection: "row",
-    //flexWrap: "wrap",
     position: "absolute",
     bottom: 10,
     alignSelf: "center",
-    //justifyContent: "space-between",
     alignItems: "stretch",
     backgroundColor: "white",
     borderWidth: 0.5,
@@ -373,7 +358,6 @@ const styles = StyleSheet.create({
     width: 80,
     right: 20,
     bottom: 20,
-    //alignContent: "center",
     shadowColor: "rgba(0,0,0, .4)", // IOS
     shadowOffset: { height: 1, width: 1 }, // IOS
     shadowOpacity: 1, // IOS
@@ -389,8 +373,6 @@ const styles = StyleSheet.create({
   image: {
     width: "60%",
     aspectRatio: 1,
-    //marginBottom: 80,
-    //marginTop: 20,\
     marginLeft: 15,
     marginTop: 15,
   },
@@ -443,22 +425,7 @@ const styles = StyleSheet.create({
   image: {
     width: "60%",
     aspectRatio: 1,
-    //marginBottom: 80,
-    //marginTop: 20,\
     marginLeft: 14,
     marginTop: 14,
   },
 });
-
-/*
-camera={{
-            center: {
-              latitude: currLocation.latitude,
-              longitude: currLocation.longitude,
-            },
-            pitch: 90,
-            heading: 45,
-            altitude: 200,
-            zoom: 30,
-          }}
-          */

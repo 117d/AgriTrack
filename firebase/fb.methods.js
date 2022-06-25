@@ -176,6 +176,7 @@ export async function addTask(
       taskStatus: taskStatus,
       dateCreated: firebase.firestore.FieldValue.serverTimestamp(),
       taskDuration: "",
+      taskProgress: {},
     };
     const uid = firebase.auth().currentUser.uid;
     console.log("uid:" + uid);
@@ -287,6 +288,12 @@ export async function getWorkers() {
 
 export async function deleteWorker(workerId) {
   const uid = firebase.auth().currentUser.uid;
+  console.log(
+    "Deleting worker: " +
+      workerId +
+      " of the user: " +
+      firebase.firestore().collection("users").doc(uid)
+  );
   const dbRef = firebase
     .firestore()
     .collection("users")

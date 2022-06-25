@@ -26,21 +26,31 @@ import { EvaIconsPack } from "@ui-kitten/eva-icons";
 import {
   getFields as GetFields,
   getTasks as GetTasks,
+  getWorkers as GetWorkers,
   logOut,
 } from "./firebase/fb.methods";
 
 export default function App() {
   LogBox.ignoreLogs(["Setting a timer for a long period of time"]);
+  LogBox.ignoreAllLogs;
   const [loggedIn, setLoggedIn] = useState(false);
   const [userFields, setUserFields] = useState([]);
   const [userTasks, setUserTasks] = useState([]);
+  const [userTeam, setUserTeam] = useState([]);
 
   const getFields = async () => {
-    // console.log("getting new fields");
     try {
       setUserFields(await GetFields());
-      //setUserFields(...userFields, await GetFields());
       console.log("user fields in app.js: " + userFields);
+    } catch (error) {
+      console.log("Error getting fields in App.js: " + error);
+    }
+  };
+
+  const getWorkers = async () => {
+    try {
+      setUserTeam(await GetWorkers());
+      console.log("user team in app.js: " + JSON.stringify(userTeam));
     } catch (error) {
       console.log("Error getting fields in App.js: " + error);
     }
@@ -49,7 +59,6 @@ export default function App() {
   const getTasks = async () => {
     try {
       setUserTasks(await GetTasks());
-      //setUserTasks(...userTasks, await GetTasks());
     } catch (error) {
       console.log("getting tasks in App.js: " + error);
     }
@@ -68,6 +77,7 @@ export default function App() {
     });
     getFields();
     getTasks();
+    getWorkers();
   }, [loggedIn]);
 
   return (
@@ -147,11 +157,15 @@ export default function App() {
                   component={Maps}
                   options={{ headerShown: false }}
                 />
-                <Stack.Screen
-                  name="TeamScreen"
-                  component={TeamScreen}
-                  options={{ title: "My Team" }}
-                />
+                <Stack.Screen name="TeamScreen" options={{ title: "My Team" }}>
+                  {(props) => (
+                    <TeamScreen
+                      {...props}
+                      workers={userTeam}
+                      updated3={getWorkers}
+                    />
+                  )}
+                </Stack.Screen>
                 <Stack.Screen
                   name="New Tracked Field"
                   component={AddNewFieldByTracking}

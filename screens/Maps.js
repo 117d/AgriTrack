@@ -38,6 +38,11 @@ export default function Map({ navigation, route }) {
   const [startTracking, setStartTracking] = useState(false);
   const [speed, setSpeed] = useState(0);
   const [area, setArea] = useState(field.area);
+  const [startCoordinate, setStartCoordinate] = useState({
+    latitude: null,
+    longitude: null,
+    time: null,
+  });
   const [time, setTime] = useState(
     task.taskProgress
       ? task.taskProgress.time
@@ -52,7 +57,7 @@ export default function Map({ navigation, route }) {
   );
   const [showUserLocation, setShowUserLocation] = useState(true);
   const mapView = React.createRef();
-
+  console.log(startTracking);
   TaskManager.defineTask(LOCATION_TASK_NAME, ({ data, error }) => {
     if (error) {
       // Error occurred - check `error.message` for more details.
@@ -132,10 +137,12 @@ export default function Map({ navigation, route }) {
 
   const resumeSession = () => {
     setModalVisible(!modalVisible);
+    setStartTracking(true);
   };
 
   const deleteSession = () => {
     emptyState();
+    setStartTracking(false);
     setModalVisible(!modalVisible);
   };
 
@@ -158,6 +165,12 @@ export default function Map({ navigation, route }) {
 
   const clickedTracking = () => {
     setStartTracking(true);
+    setStartCoordinate({
+      latitude: currLocation.latitude,
+      longitude: currLocation.longitude,
+      time: currLocation.time,
+    });
+    followCamera();
     setShowUserLocation(false);
     setStartTime(new Date() * 1);
     console.log(
@@ -189,25 +202,32 @@ export default function Map({ navigation, route }) {
   const calculateDistance = () => {
     if (startTracking) {
       let distanceCalc = geolib.getDistance(
-        { latitude: prevLocation.latitude, longitude: prevLocation.longitude },
+        {
+          latitude: startCoordinate.latitude,
+          longitude: startCoordinate.longitude,
+        },
         { latitude: currLocation.latitude, longitude: currLocation.longitude },
-        100
+        75
       );
       console.log("calculated distance => " + distanceCalc);
-      setDistance(distance + distanceCalc);
+      setDistance(geolib.convertDistance(distance + distanceCalc, "km"));
     }
   };
 
   const calculateSpeed = () => {
     if (startTracking) {
       let calcSpeed1 = prevLocation;
-      //console.log("calcSpeed 1 object is: " + JSON.stringify(calcSpeed1));
       calcSpeed1.time = prevLocation.time;
       let calcSpeed2 = currLocation;
       calcSpeed2.time = currLocation.time;
-      setSpeed(geolib.getSpeed(calcSpeed1, calcSpeed2));
-      console.log("Speed: " + geolib.getSpeed(calcSpeed1, calcSpeed2));
+      setSpeed(geolib.getSpeed(startCoordinate, calcSpeed2));
+      console.log("Speed: " + geolib.getSpeed(startCoordinate, calcSpeed2));
     }
+  };
+
+  const handleMenuSelection = () => {
+    setStartTracking(false);
+    setModalVisible(true);
   };
 
   const calculateTime = () => {
@@ -225,9 +245,9 @@ export default function Map({ navigation, route }) {
     const { status } = await Location.requestBackgroundPermissionsAsync();
     if (status === "granted") {
       await Location.startLocationUpdatesAsync(LOCATION_TASK_NAME, {
-        accuracy: Location.Accuracy.Highest,
+        accuracy: Location.Accuracy.BestForNavigation,
         //timeInterval: 10000,
-        distanceInterval: 3,
+        distanceInterval: 1,
       });
     }
   };
@@ -235,7 +255,9 @@ export default function Map({ navigation, route }) {
   useEffect(() => {
     console.log("useEffect was called");
     requestPermissions();
-    followCamera();
+    if (startTracking) {
+      followCamera();
+    }
     if (prevLocation) {
       calculateSpeed();
       calculateDistance();
@@ -288,7 +310,6 @@ export default function Map({ navigation, route }) {
           showsCompass={true}
           loadingEnabled={true}
           provider={"google"}
-          //onPress={(e) => console.log(e.nativeEvent.coordinate)}
         >
           {field.coordinates != null ? (
             <MapView.Polygon
@@ -317,7 +338,7 @@ export default function Map({ navigation, route }) {
       ) : null}
       <View style={styles.navBar}>
         <Text style={styles.navBarText}>
-          Speed: {speed} km/h | Area: {area} Ha | Time:{" "}
+          Speed: {speed.toFixed(2)} km/h | Area: {area} Ha | Time:{" "}
           {time.hours < 10 ? "0" + time.hours : time.hours}:
           {time.minutes < 10 ? "0" + time.minutes : time.minutes}:
           {time.seconds < 10 ? "0" + time.seconds : time.seconds}
@@ -326,14 +347,11 @@ export default function Map({ navigation, route }) {
       <View style={styles.bottomBar}>
         <View style={styles.bottomBarGroup}>
           <Text style={styles.bottomBarHeader}>DISTANCE</Text>
-          <Text style={styles.bottomBarContent}>{distance} km</Text>
+          <Text style={styles.bottomBarContent}>{distance.toFixed(2)} km</Text>
         </View>
       </View>
       {!startTracking ? (
-        <TouchableOpacity
-          style={styles.addButton}
-          onPress={() => clickedTracking()}
-        >
+        <TouchableOpacity style={styles.addButton} onPress={clickedTracking}>
           <Image
             style={styles.image}
             source={require("../assets/start_icon.png")}
@@ -342,7 +360,7 @@ export default function Map({ navigation, route }) {
       ) : (
         <TouchableOpacity
           style={styles.addButton}
-          onPress={() => setModalVisible(true)}
+          onPress={() => handleMenuSelection()}
         >
           <Image
             style={styles.image}
@@ -363,9 +381,7 @@ const styles = StyleSheet.create({
   },
   navBar: {
     backgroundColor: "rgba(0,0,0,0.7)",
-    //height: 64,
     height: 80,
-    //width: width,
     position: "absolute",
     top: 0,
     bottom: 0,
@@ -380,11 +396,9 @@ const styles = StyleSheet.create({
     paddingTop: 30,
   },
   map: {
-    //flex: 1,
     width: "100%",
     height: "100%",
     paddingTop: 81,
-    //marginTop: 64,
   },
   bottomBar: {
     position: "absolute",
@@ -415,7 +429,6 @@ const styles = StyleSheet.create({
   addButton: {
     flex: 1,
     flexDirection: "row",
-    //flexWrap: "wrap",
     position: "absolute",
     bottom: 10,
     alignSelf: "center",
@@ -467,7 +480,7 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
   },
   modal: {
-    width: "80%",
+    width: "90%",
     height: "15%",
     alignItems: "center",
     justifyContent: "center",
@@ -476,6 +489,7 @@ const styles = StyleSheet.create({
     left: width / 9,
     backgroundColor: "rgba(0,0,0,0.7)",
     paddingTop: 10,
+    alignSelf: "center",
   },
   inputBtn: {
     width: "30%",
@@ -496,25 +510,3 @@ const styles = StyleSheet.create({
     color: "black",
   },
 });
-
-/*
-camera={{
-            center: {
-              latitude: currLocation.latitude,
-              longitude: currLocation.longitude,
-            },
-            pitch: 90,
-            heading: 45,
-            altitude: 200,
-            zoom: 30,
-          }}
-          */
-/**
- * time presentation if have separate time values on each: 
- *  <Text style={styles.navBarText}>
-          Speed: {speed} km/h | Area: {area} Ha | Time:{" "}
-          {time.hours < 10 ? "0" + time.hours : time.hours}:
-          {time.minutes < 10 ? "0" + time.minutes : time.minutes}:
-          {time.seconds < 10 ? "0" + time.seconds : time.seconds}
-        </Text>
- */

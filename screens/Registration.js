@@ -42,9 +42,7 @@ export default function Registration({ navigation }) {
     } else if (password !== confirmPassword) {
       alert("Password does not match!");
     } else {
-      //setAvatar(uploadImage(pickedImage));
       setAvatar(await uploadImage(pickedImage));
-      //setAvatar(pickedImage);
       console.log("link to the avatar picture is: " + avatar);
       register(email, password, lastName, firstName, avatar);
       navigation.navigate("Loading");

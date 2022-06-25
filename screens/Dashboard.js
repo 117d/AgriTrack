@@ -69,7 +69,6 @@ export default function Dashboard(props) {
 
       if (!doc.exists) {
         setFirstName("Admin");
-        //navigation.navigate("Home");
       } else {
         setUser(doc);
         let dataObj = doc.data();
@@ -129,19 +128,17 @@ export default function Dashboard(props) {
         onRequestClose={() => {
           setOptionsVisible(!optionsVisible);
         }}
+        style={{ maxHeight: "70%", width: "100%" }}
       >
         <Card>
           <Text style={styles.modalTitle}>Choose parameters</Text>
           <View style={styles.button}>
-            <Button
-              style={styles.inputBtn}
-              onPress={() => handleNavigatingToManual()}
-            >
+            <Button style={styles.inputBtn} onPress={handleNavigatingToManual}>
               Manually
             </Button>
             <Button
               style={styles.inputBtn}
-              onPress={() => handleNavigatingToTrackingField()}
+              onPress={handleNavigatingToTrackingField}
             >
               By Tracking
             </Button>
@@ -169,7 +166,6 @@ export default function Dashboard(props) {
                 mode="dropdown"
                 selectedIndex={selectedIndex}
                 prompt="Choose Task..."
-                // onSelect={(index) => setSelectedIndex(index)}
                 onSelect={(index) => handleTaskSelection(index)}
               >
                 {props.tasks.map((task) => (
@@ -273,7 +269,7 @@ export default function Dashboard(props) {
         </Button>
         <Button
           style={styles.btn}
-          onPress={() => handleAddingNewField()}
+          onPress={handleAddingNewField}
           accessoryLeft={MapIcon}
         >
           Add Field

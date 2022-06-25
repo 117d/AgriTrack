@@ -144,7 +144,10 @@ export default function UserProfile(props) {
 
   const renderFieldIcon = (props) => <Icon {...props} name="compass" />;
 
-  useEffect(() => {}, []);
+  useEffect(() => {
+    props.updated();
+    props.updated2();
+  }, []);
 
   const renderItem = ({ item, index }) => (
     <ListItem
@@ -199,11 +202,6 @@ export default function UserProfile(props) {
     props.updated2();
   };
   return (
-    // <TabView
-    //   selectedIndex={selectedIndex}
-    //   onSelect={(index) => setSelectedIndex(index)}
-    // >
-    //   <Tab title="Tasks" icon={ClipboardIcon}>
     <View style={styles.container}>
       <Modal
         style={styles.modal}
@@ -219,7 +217,7 @@ export default function UserProfile(props) {
             <Text style={styles.itemsText}>Name: </Text>
             <Input
               style={{ width: "100%" }}
-              value={task.taskName}
+              value={newTaskName ? newTaskName : task.taskName}
               onChangeText={(newName) => setNewTaskName(newName)}
             ></Input>
 
@@ -239,7 +237,7 @@ export default function UserProfile(props) {
               {taskTypes.map((type) => (
                 <SelectItem
                   title={type.taskName}
-                  value={type.taskId}
+                  value={type.taskName}
                   key={type.taskId}
                 />
               ))}
@@ -265,13 +263,13 @@ export default function UserProfile(props) {
               ))}
             </Select>
             <View style={styles.buttonContainer}>
-              <Button style={styles.btns} onPress={() => saveEdittedTask()}>
+              <Button style={styles.btns} onPress={saveEdittedTask}>
                 Save
               </Button>
               <Button
                 style={styles.btns}
                 status={"danger"}
-                onPress={() => handleTaskRemoval()}
+                onPress={handleTaskRemoval}
               >
                 Delete
               </Button>
@@ -300,7 +298,7 @@ export default function UserProfile(props) {
             <Text style={styles.itemsText}>Name: </Text>
             <Input
               style={{ width: "100%" }}
-              value={field.fieldName}
+              value={newFieldName ? newFieldName : field.fieldName}
               onChangeText={(newName) => setNewFieldName(newName)}
             ></Input>
             <Text style={styles.itemsText}>Crop Type:</Text>
@@ -317,13 +315,13 @@ export default function UserProfile(props) {
               ))}
             </Select>
             <View style={styles.buttonContainer}>
-              <Button style={styles.btns} onPress={() => saveEdittedField()}>
+              <Button style={styles.btns} onPress={saveEdittedField}>
                 Save
               </Button>
               <Button
                 style={styles.btns}
                 status={"danger"}
-                onPress={() => handleFieldRemoval()}
+                onPress={handleFieldRemoval}
               >
                 Delete
               </Button>
@@ -364,18 +362,6 @@ export default function UserProfile(props) {
         </View>
       )}
     </View>
-    /* </Tab>
-      <Tab title="Fields" icon={LayersIcon}>
-        <View style={styles.container}>
-          <Text category={"h2"}>Your Fields</Text>
-          <List
-            style={styles.container}
-            data={props.fields}
-            renderItem={renderFieldItem}
-          />
-        </View>
-      </Tab>
-    </TabView> */
   );
 }
 
@@ -403,7 +389,6 @@ const styles = StyleSheet.create({
     maxHeight: "70%",
     alignItems: "center",
     justifyContent: "center",
-    //backgroundColor: "rgba(0,0,0,0.8)",
     paddingTop: 10,
     borderRadius: 300,
   },
